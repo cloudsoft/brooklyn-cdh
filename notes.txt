@@ -1,0 +1,20 @@
+
+
+
+Useful references:
+     
+https://ccp.cloudera.com/display/FREE400BETA/Automated+Installation+of+Cloudera+Manager+and+CDH
+https://ccp.cloudera.com/display/CDH4DOC/Whirr+Installation
+https://ccp.cloudera.com/display/PARTNERS/Enabling+Metrics+Logging
+https://ccp.cloudera.com/download/attachments/18286071/ScriptingYourHadoopCluster.pdf
+
+
+Repos:
+     
+https://github.com/cloudera/cm_api
+https://github.com/cloudera/whirr-cm
+
+
+Postgresql database access:
+
+psql -h 127.0.0.1 -p 7432 --username=cloudera-scm   / hYRbVNTKUK (password from /etc/.. file)

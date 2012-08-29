@@ -1,0 +1,142 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    
+    <groupId>io.cloudsoft.cloudera</groupId>
+    <artifactId>brooklyn-cdh</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <packaging>jar</packaging>
+    
+    <name>Brooklyn Cloudera Manager and Hadoop Descriptor</name>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+
+        <groovy.version>1.8.6</groovy.version>
+        <testng.version>6.3.1</testng.version>
+        <brooklyn.version>0.4.0-SNAPSHOT</brooklyn.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>1.5.11</version>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-log4j12</artifactId>
+            <version>1.5.11</version>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>io.brooklyn</groupId>
+            <artifactId>brooklyn-all</artifactId>
+            <version>${brooklyn.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.brooklyn</groupId>
+            <artifactId>brooklyn-test-support</artifactId>
+            <version>${brooklyn.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.cloudera</groupId>
+            <artifactId>whirr-cm</artifactId>
+            <version>1.1-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <!-- web testing -->
+            <groupId>org.simpleframework</groupId>
+            <artifactId>simple</artifactId>
+            <version>4.1.9</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <repositories>
+        <repository>
+            <id>cloudsoft-releases</id>
+            <url>http://developers.cloudsoftcorp.com/download/maven2/</url>
+        </repository>
+            <repository>
+                <id>libs-snapshot-local</id>
+                <url>http://ccweb.cloudsoftcorp.com/maven/libs-snapshot-local/</url>
+                <snapshots>
+                    <enabled>true</enabled>
+                    <updatePolicy>never</updatePolicy>
+                    <checksumPolicy>fail</checksumPolicy>
+               </snapshots>
+         </repository>
+    </repositories>
+
+    <build>
+        <testSourceDirectory>src/test/java</testSourceDirectory>
+        <testResources>
+            <testResource>
+                <directory>src/test/resources</directory>
+            </testResource>
+        </testResources>
+
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>2.3.2</version>
+                </plugin>
+                <plugin>
+                    <artifactId>maven-deploy-plugin</artifactId>
+                    <version>2.5</version>
+                </plugin>
+                <plugin>
+                    <artifactId>maven-enforcer-plugin</artifactId>
+                    <version>1.0</version>
+                </plugin>
+                <plugin>
+                    <artifactId>maven-failsafe-plugin</artifactId>
+                    <version>2.9</version>
+                </plugin>
+                <plugin>
+                    <artifactId>maven-jar-plugin</artifactId>
+                    <version>2.3.1</version>
+                </plugin>
+
+                <plugin>
+                    <artifactId>maven-eclipse-plugin</artifactId>
+                    <version>2.8</version>
+                    <configuration>
+                        <additionalProjectnatures>
+                            <projectnature>org.eclipse.jdt.groovy.core.groovyNature</projectnature>
+                            <projectnature>org.maven.ide.eclipse.maven2Nature</projectnature>
+                        </additionalProjectnatures>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+        <plugins>
+            <plugin>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <compilerId>groovy-eclipse-compiler</compilerId>
+                    <fork>true</fork>
+                    <verbose>false</verbose>
+                    <source>1.6</source>
+                    <target>1.6</target>
+                </configuration>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.codehaus.groovy</groupId>
+                        <artifactId>groovy-eclipse-compiler</artifactId>
+                        <version>2.6.0-01</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>org.codehaus.groovy</groupId>
+                        <artifactId>groovy-eclipse-batch</artifactId>
+                        <version>1.8.6-01</version>
+                    </dependency>
+                </dependencies>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>
