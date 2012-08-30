@@ -59,11 +59,13 @@ public class ClouderaCdhNodeDriver extends StartStopSshDriver {
     
     @Override
     public void customize() {
-        log.info(""+this+" waiting for manager hostname from "+getManager()+" before customising (manager must be pingable)");
+        log.info(""+this+" waiting for manager hostname and service-up from "+getManager()+" before installing SCM");
+        DependentConfiguration.waitForTask(
+            DependentConfiguration.attributeWhenReady(getManager(), WhirrClouderaManager.SERVICE_UP),
+            getEntity());
         log.info(""+this+" got manager hostname as "+getManagerHostname());
         
-        newScript(CUSTOMIZING).
-                failOnNonZeroResultCode().
+        def script = newScript(CUSTOMIZING).
                 body.append(
                     "cd /tmp/scm_prepare_node.X",
                     "sudo ./scm_prepare_node.sh"+
@@ -71,12 +73,14 @@ public class ClouderaCdhNodeDriver extends StartStopSshDriver {
                         " --packages /tmp/scm_prepare_node.X/packages.scm"+
                         " --always /tmp/scm_prepare_node.X/always_install.scm"+
                         " --x86_64 /tmp/scm_prepare_node.X/x86_64_packages.scm"
-                    ).execute();
-                
-        DependentConfiguration.waitForTask(
-                    DependentConfiguration.attributeWhenReady(getManager(), WhirrClouderaManager.SERVICE_UP),
-                    getEntity());
-
+                    );
+        int result = script.execute();
+        if (result!=0) {
+            log.warn(""+this+" first attempt to install SCM failed, exit code "+result+"; trying again");
+            Thread.sleep(15*1000);
+            script.failOnNonZeroResultCode().execute();
+        }
+        
         def caller = new ClouderaRestCaller(server: getManagerHostname(), authName:"admin", authPass:"admin");
 
         // this entity seems to be picked up automatically at manager when agent starts on CDH node, no need to REST add call
