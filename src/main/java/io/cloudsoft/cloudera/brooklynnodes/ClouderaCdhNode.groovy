@@ -1,20 +1,23 @@
 package io.cloudsoft.cloudera.brooklynnodes;
 
-import static brooklyn.util.GroovyJavaMethods.elvis;
-
-import java.util.concurrent.TimeUnit;
-
+import static brooklyn.util.GroovyJavaMethods.elvis
 import groovy.transform.InheritConstructors
+
+import java.util.concurrent.TimeUnit
 
 import org.jclouds.compute.domain.OsFamily
 
+import brooklyn.entity.Effector
 import brooklyn.entity.basic.BasicConfigurableEntityFactory
 import brooklyn.entity.basic.ConfigurableEntityFactory
+import brooklyn.entity.basic.Description
+import brooklyn.entity.basic.MethodEffector
+import brooklyn.entity.basic.NamedParameter;
 import brooklyn.entity.basic.SoftwareProcessEntity
-import brooklyn.entity.basic.lifecycle.ScriptHelper;
+import brooklyn.entity.basic.lifecycle.ScriptHelper
 import brooklyn.entity.basic.lifecycle.StartStopDriver
-import brooklyn.event.adapter.FunctionSensorAdapter;
-import brooklyn.event.basic.BasicAttributeSensor;
+import brooklyn.event.adapter.FunctionSensorAdapter
+import brooklyn.event.basic.BasicAttributeSensor
 import brooklyn.event.basic.BasicConfigKey
 import brooklyn.location.MachineProvisioningLocation
 import brooklyn.location.basic.SshMachineLocation
@@ -41,6 +44,8 @@ public class ClouderaCdhNode extends SoftwareProcessEntity {
     public static final BasicAttributeSensor<String> CDH_HOST_ID =
         [String, "whirr.cm.cdh.node.id", "ID of host as presented to CM (usually internal hostname)"]
 
+    public static final Effector<String> COLLECT_METRICS = new MethodEffector<String>(this.&collectMetrics);
+        
     @Override
     protected StartStopDriver newDriver(SshMachineLocation loc) {
         return new ClouderaCdhNodeDriver(this, loc);
@@ -82,4 +87,18 @@ public class ClouderaCdhNode extends SoftwareProcessEntity {
     public ScriptHelper newScript(String summary) {
         return new ScriptHelper(driver, summary);
     }
+
+    /**
+     * Start the entity in the given collection of locations.
+     */
+    @Description("Collect metrics files from this host and save to a file on this machine, as a subdir of the given dir, returning the name of that subdir")
+    public String collectMetrics(@NamedParameter("targetDir") String targetDir) {
+        targetDir = targetDir + "/" + getAttribute(CDH_HOST_ID);
+        new File(targetDir).mkdir();
+        // TODO allow wildcards
+        for (role in ["datanode","namenode","master","regionserver"])
+            ((ClouderaCdhNodeDriver)driver).machine.copyFrom("/tmp/${role}-metrics.out", targetDir);
+        return targetDir;
+    }
+    
 }

@@ -98,12 +98,12 @@ public class RestDataObjects {
         }
 
         public boolean block(long millis) {
-            // TODO very poor man's block
+            // TODO this is a poor man's block...
             long startTime = System.currentTimeMillis();        
             while (isActive()) {
                 if (millis<0 || System.currentTimeMillis() > startTime + millis)
                     return false;
-                println "waiting for "+this;
+                log.debug("waiting for "+this+" ("+(System.currentTimeMillis()-startTime)+"ms elapsed)");
                 Thread.sleep(1000);
             }
             return true;
@@ -179,7 +179,14 @@ public class RestDataObjects {
         occurrences.each { it.value = value };
         return occurrences;
     }
-
+    public static List setMetricsRoleConfig(Object config, String role) {
+        def configSet = setRoleConfig(config, role, "hadoop_metrics2_safety_valve",
+            "*.sink.file.class=org.apache.hadoop.metrics2.sink.FileSink\n"+"\n"+
+            role.toLowerCase()+".sink.file.filename=/tmp/"+role.toLowerCase()+"-metrics.out\n"
+        );
+        log.info("Enabled metrics config for "+configSet.size()+" "+role+" nodes");
+        return configSet;
+    }
        
     /** converts strings of anything but alphanums and - and _ to a single - (and collapsing multiple -'s) */
     public static String tidy(String s) {
@@ -198,14 +205,6 @@ public class RestDataObjects {
         }
         // assume other types are simple
         return x;
-    }
-    public static List setMetricsRoleConfig(Object config, String role) {
-        def configSet = setRoleConfig(config, role, "hadoop_metrics2_safety_valve",
-            "*.sink.file.class=org.apache.hadoop.metrics2.sink.FileSink\n"+"\n"+
-            role.toLowerCase()+".sink.file.filename=/tmp/"+role.toLowerCase()+"-metrics.out\n"
-        );
-        log.info("Enabled metrics config for "+configSet.size()+" "+role+" nodes");
-        return configSet;
     }
         
 }

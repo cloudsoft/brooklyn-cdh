@@ -1,6 +1,7 @@
 package io.cloudsoft.cloudera;
 
 import groovy.transform.InheritConstructors
+import io.cloudsoft.cloudera.brooklynnodes.AllServices
 import io.cloudsoft.cloudera.brooklynnodes.ClouderaCdhNode
 import io.cloudsoft.cloudera.brooklynnodes.StartupGroup
 import io.cloudsoft.cloudera.brooklynnodes.WhirrClouderaManager
@@ -8,7 +9,6 @@ import io.cloudsoft.cloudera.builders.HBaseTemplate
 import io.cloudsoft.cloudera.builders.HdfsTemplate
 import io.cloudsoft.cloudera.builders.MapReduceTemplate
 import io.cloudsoft.cloudera.builders.ZookeeperTemplate
-import io.cloudsoft.cloudera.rest.ClouderaRestCaller
 import io.cloudsoft.cloudera.rest.RestDataObjects.HdfsRoleType
 
 import org.slf4j.Logger
@@ -39,7 +39,7 @@ public class SampleClouderaManagedCluster extends AbstractApplication {
         factory: ClouderaCdhNode.newFactory().setConfig(ClouderaCdhNode.MANAGER, whirrCM));
 
     // Separate high-level Services bucket, populated below
-    Entity services = new StartupGroup(this, name: "Cloudera Services");
+    AllServices services = new AllServices(this, name: "Cloudera Services");
     
     public void postStart(Collection<? extends Location> locations) {
         log.info("Application nodes started, now creating services");
