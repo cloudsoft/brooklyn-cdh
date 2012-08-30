@@ -115,7 +115,7 @@ public class WhirrClouderaManager extends WhirrCluster {
 
         try {
             FirewallManager.authorizeIngress(controller.getCompute().apply(clusterSpec), [cmServer] as Set, clusterSpec,
-                ["0.0.0.0/0"], 7180, 7182, 8088, 8888, 50030, 50060, 50070, 50090, 60010, 60030);
+                ["0.0.0.0/0"], 7180, 7182, 8088, 8888, 50030, 50060, 50070, 50090, 60010, 60020, 60030);
             authorizePing(controller.getCompute().apply(clusterSpec), [cmServer], clusterSpec);
         } catch (Throwable t) {
             log.warn("can't setup firewall/ping: "+t);

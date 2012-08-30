@@ -1,3 +1,4 @@
+
 package io.cloudsoft.cloudera.brooklynnodes;
 
 import static brooklyn.util.GroovyJavaMethods.elvis
@@ -6,13 +7,15 @@ import groovy.transform.InheritConstructors
 import java.util.concurrent.TimeUnit
 
 import org.jclouds.compute.domain.OsFamily
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 import brooklyn.entity.Effector
 import brooklyn.entity.basic.BasicConfigurableEntityFactory
 import brooklyn.entity.basic.ConfigurableEntityFactory
 import brooklyn.entity.basic.Description
 import brooklyn.entity.basic.MethodEffector
-import brooklyn.entity.basic.NamedParameter;
+import brooklyn.entity.basic.NamedParameter
 import brooklyn.entity.basic.SoftwareProcessEntity
 import brooklyn.entity.basic.lifecycle.ScriptHelper
 import brooklyn.entity.basic.lifecycle.StartStopDriver
@@ -27,6 +30,8 @@ import brooklyn.util.flags.SetFromFlag
 @InheritConstructors
 public class ClouderaCdhNode extends SoftwareProcessEntity {
 
+    private static final Logger log = LoggerFactory.getLogger(ClouderaCdhNode.class)
+    
     public static ConfigurableEntityFactory<ClouderaCdhNode> newFactory() { 
         return new BasicConfigurableEntityFactory<ClouderaCdhNode>(ClouderaCdhNode.class);
     }
@@ -60,6 +65,13 @@ public class ClouderaCdhNode extends SoftwareProcessEntity {
         return flags;
     }
 
+    // 7180, 7182, 8088, 8888, 50030, 50060, 50070, 50090, 60010, 60020, 60030
+    protected Collection<Integer> getRequiredOpenPorts() {
+        Set result = [22, 7180, 7182, 8088, 8888, 50030, 50060, 50070, 50090, 60010, 60020, 60030];
+        result.addAll(super.getRequiredOpenPorts());
+        return result;
+    }
+    
     public void connectSensors() {
         super.connectSensors();
         
@@ -96,8 +108,16 @@ public class ClouderaCdhNode extends SoftwareProcessEntity {
         targetDir = targetDir + "/" + getAttribute(CDH_HOST_ID);
         new File(targetDir).mkdir();
         // TODO allow wildcards
-        for (role in ["datanode","namenode","master","regionserver"])
-            ((ClouderaCdhNodeDriver)driver).machine.copyFrom("/tmp/${role}-metrics.out", targetDir+"/${role}-metrics.out");
+        int i=0;
+        for (role in ["datanode","namenode","master","regionserver"]) {
+            try {
+                ((ClouderaCdhNodeDriver)driver).machine.copyFrom("/tmp/${role}-metrics.out", targetDir+"/${role}-metrics.out");
+            } catch (Exception e) {
+                //not serious, file probably doesn't exist
+                log.debug("Unable to copy /tmp/${role}-metrics.out from ${this} (file may not exist): "+e);
+            }
+        }
+        log.debug("Copied ${i} metrics files from ${this}");
         return targetDir;
     }
     
