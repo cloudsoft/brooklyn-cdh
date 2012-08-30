@@ -17,7 +17,7 @@ public class AllServices extends StartupGroup {
     @Description("Collect metrics files from all hosts and save to a file on this machine, returning the name of that subdir")
     public String collectMetrics() {
         String name = "cloudera-metrics-"+System.currentTimeMillis();
-        String targetBaseDir = "/tmp/cloudera-metrics/"+name;
+        String targetBaseDir = "/tmp/cloudera-metrics/";
         new File(targetBaseDir).mkdir();
         String targetDir = targetBaseDir+"/"+name;
         new File(targetDir).mkdir();

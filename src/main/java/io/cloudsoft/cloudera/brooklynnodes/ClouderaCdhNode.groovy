@@ -97,7 +97,7 @@ public class ClouderaCdhNode extends SoftwareProcessEntity {
         new File(targetDir).mkdir();
         // TODO allow wildcards
         for (role in ["datanode","namenode","master","regionserver"])
-            ((ClouderaCdhNodeDriver)driver).machine.copyFrom("/tmp/${role}-metrics.out", targetDir);
+            ((ClouderaCdhNodeDriver)driver).machine.copyFrom("/tmp/${role}-metrics.out", targetDir+"/${role}-metrics.out");
         return targetDir;
     }
     
