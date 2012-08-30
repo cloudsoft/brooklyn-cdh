@@ -64,16 +64,20 @@ public class SampleClouderaManagedCluster extends AbstractApplication {
                 enableMetrics().
                 buildWithEntity(services);
 
-        new ZookeeperTemplate().
+        def zk = new ZookeeperTemplate().
                 manager(whirrCM).discoverHostsFromManager().
                 assignRoleServer().toAnyHost().
                 buildWithEntity(services);
 
-        new HBaseTemplate().
+        def hb = new HBaseTemplate().
                 manager(whirrCM).discoverHostsFromManager().
                 assignRoleMaster().toAnyHost().
                 assignRoleRegionServer().toAllHosts().
                 buildWithEntity(services);
+
+        // seems to want a restart of ZK then HB after configuring HB                
+        zk.restart();
+        hb.restart();
     }
     
 

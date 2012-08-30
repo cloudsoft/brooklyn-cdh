@@ -111,7 +111,8 @@ public class ClouderaCdhNode extends SoftwareProcessEntity {
         int i=0;
         for (role in ["datanode","namenode","master","regionserver"]) {
             try {
-                ((ClouderaCdhNodeDriver)driver).machine.copyFrom("/tmp/${role}-metrics.out", targetDir+"/${role}-metrics.out");
+                ((ClouderaCdhNodeDriver)driver).machine.copyFrom(sshTries:1,
+                    "/tmp/${role}-metrics.out", targetDir+"/${role}-metrics.out");
             } catch (Exception e) {
                 //not serious, file probably doesn't exist
                 log.debug("Unable to copy /tmp/${role}-metrics.out from ${this} (file may not exist): "+e);

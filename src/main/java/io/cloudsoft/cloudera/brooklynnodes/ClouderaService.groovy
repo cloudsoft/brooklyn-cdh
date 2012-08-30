@@ -108,7 +108,7 @@ public class ClouderaService extends AbstractEntity implements Startable {
     String getServiceName() { return getAttribute(SERVICE_NAME); }
     
     void invokeServiceCommand(String cmd) {
-        Object result = getApi().invokeServiceCommand(clusterName, serviceName, cmd).block(60*1000);
+        Object result = getApi().invokeServiceCommand(clusterName, serviceName, cmd).block(5*60*1000);
         if (!result) {
             setAttribute(SERVICE_STATE, Lifecycle.ON_FIRE);
             throw new IllegalStateException("The service failed to ${cmd}.");
@@ -144,8 +144,9 @@ public class ClouderaService extends AbstractEntity implements Startable {
     @Override
     @Description("Restart the process/service represented by an entity")
     void restart() {
-        invokeServiceCommand("stop");
-        invokeServiceCommand("start");
+        setAttribute(SERVICE_STATE, Lifecycle.STARTING);
+        invokeServiceCommand("restart");
+        setAttribute(SERVICE_STATE, Lifecycle.RUNNING);
     }
 
 }
