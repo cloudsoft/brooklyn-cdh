@@ -8,10 +8,13 @@ public abstract class AbstractTemplate<T extends AbstractTemplate<?>> {
     public AbstractTemplate() {
     }
 
-    String name;
+    protected String name;
     public T named(String name) {
         this.name = name;
         return (T)this;
+    }
+    public String getName() {
+        return name;
     }
 
     public abstract Object build(ClouderaRestCaller caller);

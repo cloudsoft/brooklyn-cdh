@@ -1,6 +1,11 @@
 package io.cloudsoft.cloudera.builders;
 
+import io.cloudsoft.cloudera.brooklynnodes.ClouderaService;
+import io.cloudsoft.cloudera.brooklynnodes.WhirrClouderaManager;
+import io.cloudsoft.cloudera.rest.ClouderaRestCaller;
+import io.cloudsoft.cloudera.rest.RestDataObjects;
 import io.cloudsoft.cloudera.rest.RestDataObjects.ServiceRoleHostInfo;
+import io.cloudsoft.cloudera.rest.RestDataObjects.ServiceType;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -8,19 +13,49 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import brooklyn.entity.Entity;
+import brooklyn.util.IdGenerator;
+import brooklyn.util.MutableMap;
+
+import com.google.common.base.Preconditions;
+import com.google.common.base.Throwables;
 
 
 public abstract class ServiceTemplate<T extends ServiceTemplate<?>> extends AbstractTemplate<T> {
     
+    private static final Logger log = LoggerFactory.getLogger(ServiceTemplate.class);
+
     protected String clusterName;
+    protected WhirrClouderaManager manager;
+    protected Set<String> hostIds = new LinkedHashSet<String>();
+    
     @SuppressWarnings("unchecked")
     public T cluster(String clusterName) {
         this.clusterName = clusterName;
         return (T)this;
     }
+    public String getClusterName() {
+        return clusterName;
+    }
 
-    protected Set<String> hostIds = new LinkedHashSet<String>();
+    @SuppressWarnings("unchecked")
+    public T manager(WhirrClouderaManager manager) {
+        this.manager = manager;
+        return (T)this;
+    }
+    @SuppressWarnings("unchecked")
+    public T discoverHostsFromManager() {
+        Preconditions.checkNotNull(manager, "manager must be specified before can discover hosts");
+        hosts(manager.getAttribute(WhirrClouderaManager.MANAGED_HOSTS));
+        return (T)this;
+    }
+
     @SuppressWarnings("unchecked")
     public T hosts(String ...hostIds) {
         for (String hostId: hostIds) 
@@ -33,6 +68,13 @@ public abstract class ServiceTemplate<T extends ServiceTemplate<?>> extends Abst
             // TODO convert from entities etc
             this.hostIds.add(""+hostId);
         }
+        return (T)this;
+    }
+
+    protected boolean abortIfServiceExists = false;
+    @SuppressWarnings("unchecked")
+    public T abortIfServiceExists() {
+        abortIfServiceExists = true;
         return (T)this;
     }
 
@@ -65,14 +107,15 @@ public abstract class ServiceTemplate<T extends ServiceTemplate<?>> extends Abst
         }
 
         public U toAnyHost() {
-            roleIndex++;
             if (ServiceTemplate.this.hostIds.isEmpty()) 
                 throw new IllegalStateException("No hosts defined, when defining "+ServiceTemplate.this);
             if (roleIndex >= ServiceTemplate.this.hostIds.size()) roleIndex = 0;
+            int ri = roleIndex;
+            roleIndex++;
             Iterator<String> hi = ServiceTemplate.this.hostIds.iterator();
-            while (roleIndex>0) {
+            while (ri>0) {
                 hi.next();
-                roleIndex--;
+                ri--;
             }
             return to(hi.next());
         }
@@ -91,5 +134,76 @@ public abstract class ServiceTemplate<T extends ServiceTemplate<?>> extends Abst
     public RoleAssigner<T> assignRole(String role) {
         return new RoleAssigner<T>(role);
     }
+
+    @SuppressWarnings("unchecked")
+    public T useDefaultName() {
+        if (name==null) name = getServiceType().name().toLowerCase()+"-"+IdGenerator.makeRandomId(8);
+        return (T)this;
+    }
+
+    public abstract ServiceType getServiceType();
+    
+    @Override
+    public Boolean build(ClouderaRestCaller caller) {
+        if (name==null) useDefaultName();
+        
+        List<String> clusters = caller.getClusters();
+        if (clusterName==null) {
+            if (!clusters.isEmpty()) clusterName = clusters.iterator().next();
+            else clusterName = "cluster-"+IdGenerator.makeRandomId(6);
+        }
+        if (!clusters.contains(clusterName)) caller.addCluster(clusterName);
+
+        List<String> services = caller.getServices(clusterName);
+        if (abortIfServiceExists && services.contains(name))
+            return true;
+       
+        preServiceAddChecks(caller);
+       
+        caller.addService(clusterName, name, getServiceType());
+        caller.addServiceRoleHosts(clusterName, name, roles.toArray(new ServiceRoleHostInfo[0]));
+        
+        Object config = caller.getServiceConfig(clusterName, name);
+        Map<?,?> cfgOut = convertConfig(config);
+        caller.setServiceConfig(clusterName, name, cfgOut);
+
+        return startOnceBuilt(caller);
+    }
+
+    protected void preServiceAddChecks(ClouderaRestCaller caller) {
+    }
+    
+    protected boolean startOnceBuilt(ClouderaRestCaller caller) {
+        return caller.invokeServiceCommand(clusterName, name, "start").block(60*1000);
+    }
+
+    protected Map<?, ?> convertConfig(Object config) {
+        log.debug("Config for CDH "+clusterName+"-"+name+" is: "+config);
+        return RestDataObjects.convertConfigForSetting(config, clusterName+"-"+name);
+    }
+    
+    @SuppressWarnings({ "rawtypes", "unchecked" })
+    public ClouderaService buildWithEntity(Map flags, Entity owner) {
+        MutableMap flags2 = new MutableMap(flags);
+        flags2.put("template", this);
+        if (manager!=null) flags2.put("manager", manager);
+        String name = (String) flags2.get("name");
+        if (name==null) {
+            if (name==null) useDefaultName();
+            name = this.name;
+            flags2.put("name", name);
+        }
+        ClouderaService result = new ClouderaService(flags2, owner);
+        result.create();
+        try { 
+            // pause a bit after creation, to ensure it really is created
+            // (not needed, i don't think...)
+            Thread.sleep(3000);
+        } catch (InterruptedException e) { Throwables.propagate(e); }
+        return result;
+    }
+    
+    @SuppressWarnings("rawtypes")
+    public ClouderaService buildWithEntity(Entity owner) { return buildWithEntity(new MutableMap(), owner); }
 
 }

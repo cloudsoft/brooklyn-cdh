@@ -1,5 +1,7 @@
 package io.cloudsoft.cloudera.brooklynnodes;
 
+import static brooklyn.util.GroovyJavaMethods.elvis;
+
 import java.util.concurrent.TimeUnit;
 
 import groovy.transform.InheritConstructors
@@ -9,6 +11,7 @@ import org.jclouds.compute.domain.OsFamily
 import brooklyn.entity.basic.BasicConfigurableEntityFactory
 import brooklyn.entity.basic.ConfigurableEntityFactory
 import brooklyn.entity.basic.SoftwareProcessEntity
+import brooklyn.entity.basic.lifecycle.ScriptHelper;
 import brooklyn.entity.basic.lifecycle.StartStopDriver
 import brooklyn.event.adapter.FunctionSensorAdapter;
 import brooklyn.event.basic.BasicAttributeSensor;
@@ -76,4 +79,7 @@ public class ClouderaCdhNode extends SoftwareProcessEntity {
         return null;
     }
 
+    public ScriptHelper newScript(String summary) {
+        return new ScriptHelper(driver, summary);
+    }
 }

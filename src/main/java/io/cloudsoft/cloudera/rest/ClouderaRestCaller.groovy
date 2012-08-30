@@ -95,6 +95,10 @@ public class ClouderaRestCaller {
     public List<String> getServiceRoleTypes(String clusterName, String serviceName) {
         return getServiceRoleTypesJson(clusterName, serviceName).roleTypeConfigs.collect { it.roleType }
     }
+    public Object getServiceJson(String clusterName, String serviceName) {
+        return caller.doGet("clusters/${URLParamEncoder.encode(clusterName)}/"+
+            "services/${URLParamEncoder.encode(serviceName)}");
+    }
     public List<String> addServiceRoleHosts(String clusterName, String serviceName, 
                 ServiceRoleHostInfo ...rolehosts) {
         def body = [items: rolehosts.collect { ServiceRoleHostInfo h -> h.asMap() } ]
@@ -142,10 +146,10 @@ public class ClouderaRestCaller {
     }
 
     public static void main(String[] args) {
-        def SERVER = "ec2-23-22-170-157.compute-1.amazonaws.com";
-        def H1 = "ip-10-202-94-94.ec2.internal";
-        def H2 = "ip-10-196-119-79.ec2.internal";
-        def H3 = "ip-10-118-190-146.ec2.internal";
+        def SERVER = "ec2-50-16-132-190.compute-1.amazonaws.com";
+//        def H1 = "ip-10-202-94-94.ec2.internal";
+//        def H2 = "ip-10-196-119-79.ec2.internal";
+//        def H3 = "ip-10-118-190-146.ec2.internal";
         
         def caller = new ClouderaRestCaller(server: SERVER, authName:"admin", authPass:"admin");
         println caller.getHostsJson();
@@ -158,7 +162,7 @@ public class ClouderaRestCaller {
         }
         def cluster = clusters.iterator().next();
         
-        def services = caller.getServices(cluster);
+        def services = caller.findServicesOfType(cluster, ServiceType.HBASE);
         println "services: "+services;
         if (!services) {
             String service = "hdfs-"+IdGenerator.makeRandomId(4);
@@ -169,27 +173,30 @@ public class ClouderaRestCaller {
         
         println "role types at ${service}: "+caller.getServiceRoleTypes(cluster, service);
         
-        def roles = caller.getServiceRoles(cluster, service);
-        if (!roles) {
-            println "after roles added: "+caller.addServiceRoleHosts(cluster, service,
-            new ServiceRoleHostInfo(HdfsRoleType.DATANODE, H1),
-            new ServiceRoleHostInfo(HdfsRoleType.DATANODE, H2),
-            new ServiceRoleHostInfo(HdfsRoleType.DATANODE, H3),
-            new ServiceRoleHostInfo(HdfsRoleType.NAMENODE, H1),
-            new ServiceRoleHostInfo(HdfsRoleType.SECONDARYNAMENODE, H2));
-            roles = caller.getServiceRoles(cluster, service);
-        }
-        String role = roles.iterator().next()
+//        def roles = caller.getServiceRoles(cluster, service);
+//        if (!roles) {
+//            println "after roles added: "+caller.addServiceRoleHosts(cluster, service,
+//            new ServiceRoleHostInfo(HdfsRoleType.DATANODE, H1),
+//            new ServiceRoleHostInfo(HdfsRoleType.DATANODE, H2),
+//            new ServiceRoleHostInfo(HdfsRoleType.DATANODE, H3),
+//            new ServiceRoleHostInfo(HdfsRoleType.NAMENODE, H1),
+//            new ServiceRoleHostInfo(HdfsRoleType.SECONDARYNAMENODE, H2));
+//            roles = caller.getServiceRoles(cluster, service);
+//        }
+//        String role = roles.iterator().next()
         
         def cfg = caller.getServiceConfig(cluster, service);
         println "role configs at ${service}: "+cfg
+//        println "metrics: "+RestDataObjects.setMetricsRoleConfig(cfg, HdfsRoleType.DATANODE.name());
         Map cfgOut = RestDataObjects.convertConfigForSetting(cfg, cluster+"-"+service);
         println "role configs to set at ${service}: "+cfgOut
+        
+        
         caller.setServiceConfig(cluster, service, cfgOut);
-        
-        caller.invokeHdfsFormatNameNodes(service, cluster).block(60*1000);
-        
-        caller.invokeServiceCommand(cluster, service, "start").block(60*1000);
+//        
+//        caller.invokeHdfsFormatNameNodes(service, cluster).block(60*1000);
+//        
+//        caller.invokeServiceCommand(cluster, service, "start").block(60*1000);
     }
 
 }

@@ -3,29 +3,33 @@ package io.cloudsoft.cloudera.builders;
 import io.cloudsoft.cloudera.rest.ClouderaRestCaller;
 import io.cloudsoft.cloudera.rest.RestDataObjects;
 import io.cloudsoft.cloudera.rest.RestDataObjects.HdfsRoleType;
-import io.cloudsoft.cloudera.rest.RestDataObjects.ServiceRoleHostInfo;
 import io.cloudsoft.cloudera.rest.RestDataObjects.ServiceType;
 
-import java.util.List;
 import java.util.Map;
 
-import brooklyn.util.IdGenerator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class HdfsTemplate extends ServiceTemplate<HdfsTemplate> {
 
+    private static final Logger log = LoggerFactory.getLogger(HdfsTemplate.class);
+
+    @Override
+    public ServiceType getServiceType() { return ServiceType.HDFS; }
+    
     public RoleAssigner<HdfsTemplate> assignRole(HdfsRoleType role) {
         return assignRole(role.name());
-    }
-
-    protected boolean abortIfServiceExists = false;
-    public HdfsTemplate abortIfServiceExists() {
-        abortIfServiceExists = true;
-        return this;
     }
 
     protected boolean formatNameNodes = false;
     public HdfsTemplate formatNameNodes() {
         formatNameNodes = true;
+        return this;
+    }
+
+    protected boolean enableMetrics=false;
+    public HdfsTemplate enableMetrics() {
+        enableMetrics = true;
         return this;
     }
 
@@ -39,33 +43,20 @@ public class HdfsTemplate extends ServiceTemplate<HdfsTemplate> {
         return assignRole(HdfsRoleType.SECONDARYNAMENODE);
     }
 
+    protected boolean startOnceBuilt(ClouderaRestCaller caller) {
+        caller.invokeHdfsFormatNameNodes(clusterName, name).block(60*1000);
+        return super.startOnceBuilt(caller);
+    }
+    
     @Override
-    public Object build(ClouderaRestCaller caller) {
-        if (name==null) name = "hdfs-"+IdGenerator.makeRandomId(8);
-        
-        List<String> clusters = caller.getClusters();
-        if (clusterName==null) {
-            if (!clusters.isEmpty()) clusterName = clusters.iterator().next();
-            else clusterName = "cluster-"+IdGenerator.makeRandomId(6);
+    protected Map<?, ?> convertConfig(Object config) {
+        if (enableMetrics) {
+            RestDataObjects.setMetricsRoleConfig(config, HdfsRoleType.DATANODE.name());
+            RestDataObjects.setMetricsRoleConfig(config, HdfsRoleType.NAMENODE.name());
         }
-        if (!clusters.contains(clusterName)) caller.addCluster(clusterName);
-
-        List<String> services = caller.getServices(clusterName);
-        if (abortIfServiceExists && services.contains(name))
-            return true;
-        
-        caller.addService(clusterName, name, ServiceType.HDFS);
-        caller.addServiceRoleHosts(clusterName, name, roles.toArray(new ServiceRoleHostInfo[0]));
-        
-        Object config = caller.getServiceConfig(clusterName, name);
-        Map<?,?> cfgOut = RestDataObjects.convertConfigForSetting(config, clusterName+"-"+name);
-        caller.setServiceConfig(clusterName, name, cfgOut);
-
-        if (formatNameNodes) {
-            caller.invokeHdfsFormatNameNodes(clusterName, name).block(60*1000);
-        }
-        
-        return caller.invokeServiceCommand(clusterName, name, "start").block(60*1000);
+        Map<?,?> cfgOut = super.convertConfig(config);
+        log.debug("HDFS ${name} converted config: "+cfgOut);
+        return cfgOut;
     }
 
     
@@ -99,4 +90,9 @@ public class HdfsTemplate extends ServiceTemplate<HdfsTemplate> {
 //    }
 
 
+/*  Hadoop Metrics2 Safety Valve
+*.sink.file.class=org.apache.hadoop.metrics2.sink.FileSink
+ 
+datanode.sink.file.filename=/tmp/datanode-metrics.out
+*/
 }

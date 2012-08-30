@@ -4,8 +4,10 @@ import groovy.transform.InheritConstructors
 import io.cloudsoft.cloudera.brooklynnodes.ClouderaCdhNode
 import io.cloudsoft.cloudera.brooklynnodes.StartupGroup
 import io.cloudsoft.cloudera.brooklynnodes.WhirrClouderaManager
+import io.cloudsoft.cloudera.builders.HBaseTemplate
 import io.cloudsoft.cloudera.builders.HdfsTemplate
 import io.cloudsoft.cloudera.builders.MapReduceTemplate
+import io.cloudsoft.cloudera.builders.ZookeeperTemplate
 import io.cloudsoft.cloudera.rest.ClouderaRestCaller
 import io.cloudsoft.cloudera.rest.RestDataObjects.HdfsRoleType
 
@@ -27,36 +29,57 @@ public class SampleClouderaManagedCluster extends AbstractApplication {
     static final Logger log = LoggerFactory.getLogger(SampleClouderaManagedCluster.class);
     static final String DEFAULT_LOCATION = "aws-ec2:us-east-1";
     
+    // Admin - Cloudera Manager Node
     Entity admin = new StartupGroup(this, name: "Cloudera Hosts and Admin");
     WhirrClouderaManager whirrCM = new WhirrClouderaManager(admin);
-    DynamicCluster workerCluster = new DynamicCluster(admin, name: "CDH Nodes", initialSize: 3, 
+    
+    // and CDH Hosts ("workers")
+    DynamicCluster workerCluster = new DynamicCluster(admin, name: "CDH Nodes", 
+        initialSize: 4, 
         factory: ClouderaCdhNode.newFactory().setConfig(ClouderaCdhNode.MANAGER, whirrCM));
 
+    // Separate high-level Services bucket, populated below
     Entity services = new StartupGroup(this, name: "Cloudera Services");
     
-    ClouderaRestCaller api;
-    
     public void postStart(Collection<? extends Location> locations) {
-        api = new ClouderaRestCaller(server: whirrCM.getAttribute(WhirrClouderaManager.CLOUDERA_MANAGER_HOSTNAME), authName:"admin", authPass: "admin");
-        
         log.info("Application nodes started, now creating services");
         
-        Object hdfsService = new HdfsTemplate().
-                hosts(whirrCM.getAttribute(WhirrClouderaManager.MANAGED_HOSTS)).
+        // create these in sequence
+        // following builds with sensible defaults, showing a few different syntaxes
+        
+        new HdfsTemplate().
+                manager(whirrCM).discoverHostsFromManager().
                 assignRole(HdfsRoleType.NAMENODE).toAnyHost().
                 assignRole(HdfsRoleType.SECONDARYNAMENODE).toAnyHost().
                 assignRole(HdfsRoleType.DATANODE).toAllHosts().
                 formatNameNodes().
-            build(api);
+                enableMetrics().
+                buildWithEntity(services, manager: whirrCM);
             
-        Object mapredService = new MapReduceTemplate().
+        new MapReduceTemplate().
                 named("mapreduce-sample").
-                hosts(whirrCM.getAttribute(WhirrClouderaManager.MANAGED_HOSTS)).
+                manager(whirrCM).discoverHostsFromManager().
                 assignRoleJobTracker().toAnyHost().
                 assignRoleTaskTracker().toAllHosts().
-            build(api);
+                enableMetrics().
+                buildWithEntity(services);
+
+        new ZookeeperTemplate().
+                manager(whirrCM).discoverHostsFromManager().
+                assignRoleServer().toAnyHost().
+                buildWithEntity(services);
+
+        new HBaseTemplate().
+                manager(whirrCM).discoverHostsFromManager().
+                assignRoleMaster().toAnyHost().
+                assignRoleRegionServer().toAllHosts().
+                buildWithEntity(services);
     }
     
+
+    // can be started in usual Java way, or (bypassing method below)
+    // with brooklyn command-line
+        
     public static void main(String[] argv) {
         ArrayList args = new ArrayList(Arrays.asList(argv));
         int port = CommandLineUtil.getCommandLineOptionInt(args, "--port", 8081);

@@ -18,10 +18,10 @@ public class RestDataObjects {
     enum HdfsRoleType { DATANODE, NAMENODE, SECONDARYNAMENODE, BALANCER, GATEWAY, HTTPFS, FAILOVERCONTROLLER }
     enum MapReduceRoleType { JOBTRACKER, TASKTRACKER, GATEWAY }
     enum HBaseRoleType { MASTER, REGIONSERVER, GATEWAY }
+    enum ZookeeperRoleType { SERVER }
     
 //    YARN    RESROUCEMANAGER, NODEMANAGER, JOBHISTORY, GATEWAY
 //    OOZIE   OOZIE_SERVER
-//    ZOOKEEPER   SERVER
 //    HUE   HUE_SERVER, BEESWAX_SERVER, KT_RENEWER,   JOBSUBD (CDHv3 only)
     
     public abstract static class Jsonable {
@@ -170,6 +170,15 @@ public class RestDataObjects {
         occurrences.each { it.value = value };
         return occurrences;
     }
+    public static List setRoleConfig(Object config, String role, String key, Object value) {
+        List occurrences = []
+        if (config.roleTypeConfigs) {
+            config.roleTypeConfigs.findAll({role.equalsIgnoreCase(it.roleType)}).
+                each({it.items.findAll({it.name==key}).each{ occurrences.add(it) } });
+        }
+        occurrences.each { it.value = value };
+        return occurrences;
+    }
 
        
     /** converts strings of anything but alphanums and - and _ to a single - (and collapsing multiple -'s) */
@@ -189,6 +198,14 @@ public class RestDataObjects {
         }
         // assume other types are simple
         return x;
+    }
+    public static List setMetricsRoleConfig(Object config, String role) {
+        def configSet = setRoleConfig(config, role, "hadoop_metrics2_safety_valve",
+            "*.sink.file.class=org.apache.hadoop.metrics2.sink.FileSink\n"+"\n"+
+            role.toLowerCase()+".sink.file.filename=/tmp/"+role.toLowerCase()+"-metrics.out\n"
+        );
+        log.info("Enabled metrics config for "+configSet.size()+" "+role+" nodes");
+        return configSet;
     }
         
 }

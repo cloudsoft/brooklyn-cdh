@@ -193,5 +193,18 @@ public class WhirrClouderaManager extends WhirrCluster {
     public void stop() {
         super.stop()
     }
+    
+    public ClouderaCdhNode findEntityForHostId(String hostId) {
+        return findEntityForHostIdIn(hostId, owner);
+    }
+    public static ClouderaCdhNode findEntityForHostIdIn(String hostId, Entity root) {
+        if ((root in ClouderaCdhNode) && hostId.equals(root.getAttribute(ClouderaCdhNode.CDH_HOST_ID)))
+            return root;
+        for (Entity child: root.ownedChildren) {
+            ClouderaCdhNode result = findEntityForHostIdIn(hostId, child);
+            if (result) return result;
+        }
+        return null;
+    }
 
 }
