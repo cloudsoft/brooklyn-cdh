@@ -27,12 +27,12 @@ public class ClouderaCdhNodeDriver extends StartStopSshDriver {
     
     @Override
     public boolean isRunning() {
-        return entity.getAttribute(ClouderaCdhNode.SERVICE_UP);
+        return ((ClouderaCdhNode)entity).getManagedHostId()!=null;
     }
 
     @Override
     public void stop() {
-        // just wait for machine to be killed...
+        // just wait for machine to be killed
     }
 
     @Override
@@ -82,26 +82,25 @@ public class ClouderaCdhNodeDriver extends StartStopSshDriver {
         def caller = new ClouderaRestCaller(server: getManagerHostname(), authName:"admin", authPass:"admin");
 
         // this entity seems to be picked up automatically at manager when agent starts on CDH node, no need to REST add call
-//        String ipAddress = null;
-//        if (machine in JcloudsSshMachineLocation) {
-//            def addrs = ((JcloudsSshMachineLocation)machine).getNode().getPrivateAddresses();
-//            if (addrs) {
-//                ipAddress = addrs.iterator().next();
-//                log.info("IP address (private) of "+machine+" for "+entity+" detected as "+ipAddress);
-//            } else {
-//                addrs = ((JcloudsSshMachineLocation)machine).getNode().getPublicAddresses();
-//                if (addrs) {
-//                    log.info("IP address (public) of "+machine+" for "+entity+" detected as "+ipAddress);
-//                    ipAddress = addrs.iterator().next();
-//                }
-//            }
-//        }
-//        if (ipAddress==null) {
-//            ipAddress = InetAddress.getByName(hostname)?.getHostAddress();
-//            log.info("IP address (hostname) of "+machine+" for "+entity+" detected as "+ipAddress);
-//        }
-//        
-//        caller.addHosts(new HostAddInfo(hostname: getHostname(), ipAddress: ipAddress))
+        String ipAddress = null;
+        if (machine in JcloudsSshMachineLocation) {
+            def addrs = ((JcloudsSshMachineLocation)machine).getNode().getPrivateAddresses();
+            if (addrs) {
+                ipAddress = addrs.iterator().next();
+                log.info("IP address (private) of "+machine+" for "+entity+" detected as "+ipAddress);
+            } else {
+                addrs = ((JcloudsSshMachineLocation)machine).getNode().getPublicAddresses();
+                if (addrs) {
+                    log.info("IP address (public) of "+machine+" for "+entity+" detected as "+ipAddress);
+                    ipAddress = addrs.iterator().next();
+                }
+            }
+        }
+        if (ipAddress==null) {
+            ipAddress = InetAddress.getByName(hostname)?.getHostAddress();
+            log.info("IP address (hostname) of "+machine+" for "+entity+" detected as "+ipAddress);
+        }
+        entity.setAttribute(ClouderaCdhNode.PRIVATE_IP, hostname);
 
         // but we do need to record the _on-box_ hostname as this is what it is knwon at at the manager        
         String hostname = getHostname();
@@ -115,7 +114,7 @@ public class ClouderaCdhNodeDriver extends StartStopSshDriver {
 
     @Override
     public void launch() {
-        entity.setAttribute(ClouderaCdhNode.SERVICE_STATE, Lifecycle.RUNNING)
+        // nothing needed here, services get launched separately
     }
 
 }

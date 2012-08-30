@@ -3,21 +3,26 @@ package io.cloudsoft.cloudera.rest;
 import java.lang.reflect.Field
 import java.lang.reflect.Modifier
 
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
+
 import brooklyn.util.flags.FlagUtils
 
 public class RestDataObjects {
 
+    private static final Logger log = LoggerFactory.getLogger(RestDataObjects.class);
+    
     enum ClusterType { CDH3, CDH4 }
     enum ServiceType { HDFS, MAPREDUCE, HBASE, OOZIE, ZOOKEEPER, HUE, YARN }
     
     enum HdfsRoleType { DATANODE, NAMENODE, SECONDARYNAMENODE, BALANCER, GATEWAY, HTTPFS, FAILOVERCONTROLLER }
+    enum MapReduceRoleType { JOBTRACKER, TASKTRACKER, GATEWAY }
+    enum HBaseRoleType { MASTER, REGIONSERVER, GATEWAY }
     
-//    MAPREDUCE   JOBTRACKER, TASKTRACKER, GATEWAY
-//    HBASE   MASTER, REGIONSERVER, GATEWAY
 //    YARN    RESROUCEMANAGER, NODEMANAGER, JOBHISTORY, GATEWAY
 //    OOZIE   OOZIE_SERVER
 //    ZOOKEEPER   SERVER
-//    HUE   HUE_SERVER, BEESWAX_SERVER, KT_RENEWER,   JOBSUBD (v3 only)
+//    HUE   HUE_SERVER, BEESWAX_SERVER, KT_RENEWER,   JOBSUBD (CDHv3 only)
     
     public abstract static class Jsonable {
         public abstract Object asJsonType();
@@ -135,15 +140,18 @@ public class RestDataObjects {
             config.roleTypeConfigs.collect({
                 Map newRtConfig = [:];
                 newRtConfig.roleType = it.roleType;
-                newRtConfig.items = it.items.findAll({ it.required && (!it.containsKey("value") || it.value==null) }).collect { 
-                    ci -> convertConfigItemForSetting(ci, context+"-"+it.roleType);
-                }
+                newRtConfig.items = []
+                newRtConfig.items.addAll it.items.findAll({ it.containsKey("value") && it.value!=null }).
+                    collect { [name:it.name, value:it.value] };
+                newRtConfig.items.addAll it.items.findAll({ it.required && (!it.containsKey("value") || it.value==null) }).
+                    collect { ci -> convertConfigItemForSetting(ci, context+"-"+it.roleType); }
                 return newRtConfig;
             }).findAll({it.items})
-        newConfig.items =
-            config.items.findAll({ it.required && (!it.containsKey("value") || it.value==null) }).collect {
-                convertConfigItemForSetting(it, context);
-            }
+        newConfig.items = []
+        newConfig.items.addAll config.items.findAll({ it.containsKey("value") && it.value!=null }).
+            collect { [name:it.name, value:it.value] };
+        newConfig.items.addAll config.items.findAll({ it.required && (!it.containsKey("value") || it.value==null) })
+            .collect { convertConfigItemForSetting(it, context); }
         return newConfig;
     }
     public static Map convertConfigItemForSetting(Object config, String context) {
@@ -153,8 +161,16 @@ public class RestDataObjects {
         if (keyName.endsWith(".dir") || keyName.endsWith("_dir") || keyName.endsWith("_dir_list")) {
             return "/mnt/"+tidy(context)+"/"+tidy(keyName);
         }
+        log.warn("Unknown configuration key "+keyName+"  ("+context+" with "+config);
         return "UNKNOWN-"+tidy(context)+"-"+tidy(keyName);
     }
+    public static List setConfig(Object config, String key, Object value) {
+        List occurrences = new ArrayList(config.items.findAll({it.name==key}));
+        if (config.roleTypeConfigs) occurrences.addAll(config.roleTypeConfigs.items.findAll({it.name==key}));
+        occurrences.each { it.value = value };
+        return occurrences;
+    }
+
        
     /** converts strings of anything but alphanums and - and _ to a single - (and collapsing multiple -'s) */
     public static String tidy(String s) {
@@ -174,5 +190,5 @@ public class RestDataObjects {
         // assume other types are simple
         return x;
     }
-    
+        
 }

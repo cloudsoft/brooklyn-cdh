@@ -13,29 +13,31 @@ import brooklyn.util.IdGenerator;
 
 public class HdfsTemplate extends ServiceTemplate<HdfsTemplate> {
 
-  
     public RoleAssigner<HdfsTemplate> assignRole(HdfsRoleType role) {
         return assignRole(role.name());
     }
 
-    private String clusterName;
-    private HdfsTemplate cluster(String clusterName) {
-        this.clusterName = clusterName;
-        return this;
-    }
-
-    boolean abortIfServiceExists = false;
-    private HdfsTemplate abortIfServiceExists() {
+    protected boolean abortIfServiceExists = false;
+    public HdfsTemplate abortIfServiceExists() {
         abortIfServiceExists = true;
         return this;
     }
 
-    boolean formatNameNodes = false;
-    private HdfsTemplate formatNameNodes() {
+    protected boolean formatNameNodes = false;
+    public HdfsTemplate formatNameNodes() {
         formatNameNodes = true;
         return this;
     }
 
+    public RoleAssigner<HdfsTemplate> assignRoleNameNode() {
+        return assignRole(HdfsRoleType.NAMENODE);
+    }
+    public RoleAssigner<HdfsTemplate> assignRoleDataNode() {
+        return assignRole(HdfsRoleType.DATANODE);
+    }
+    public RoleAssigner<HdfsTemplate> assignRoleSecondaryNameNode() {
+        return assignRole(HdfsRoleType.SECONDARYNAMENODE);
+    }
 
     @Override
     public Object build(ClouderaRestCaller caller) {
@@ -56,7 +58,7 @@ public class HdfsTemplate extends ServiceTemplate<HdfsTemplate> {
         caller.addServiceRoleHosts(clusterName, name, roles.toArray(new ServiceRoleHostInfo[0]));
         
         Object config = caller.getServiceConfig(clusterName, name);
-        Map cfgOut = RestDataObjects.convertConfigForSetting(config, clusterName+"-"+name);
+        Map<?,?> cfgOut = RestDataObjects.convertConfigForSetting(config, clusterName+"-"+name);
         caller.setServiceConfig(clusterName, name, cfgOut);
 
         if (formatNameNodes) {
@@ -67,44 +69,34 @@ public class HdfsTemplate extends ServiceTemplate<HdfsTemplate> {
     }
 
     
-    public static void main(String[] args) {
-        String SERVER = "ec2-23-22-170-157.compute-1.amazonaws.com",
-            H1 = "ip-10-202-94-94.ec2.internal",
-            H2 = "ip-10-196-119-79.ec2.internal",
-            H3 = "ip-10-118-190-146.ec2.internal";
-        
-        ClouderaRestCaller caller = ClouderaRestCaller.newInstance(SERVER, "admin", "admin");
+//    public static void main(String[] args) {
+//        String SERVER = "ec2-23-22-170-157.compute-1.amazonaws.com",
+//            H1 = "ip-10-202-94-94.ec2.internal",
+//            H2 = "ip-10-196-119-79.ec2.internal",
+//            H3 = "ip-10-118-190-146.ec2.internal";
+//        
+//        ClouderaRestCaller caller = ClouderaRestCaller.newInstance(SERVER, "admin", "admin");
+//
+////        Object hdfsService = new HdfsTemplate().
+////                named("hdfs-1").
+////                hosts(H1, H2, H3).
+////                assignRole(HdfsRoleType.NAMENODE).to(H1).
+////                assignRole(HdfsRoleType.SECONDARYNAMENODE).to(H2).
+////                assignRole(HdfsRoleType.DATANODE).toAllHosts().
+////                formatNameNodes().
+////            build(caller);
+//        
+////        Object hdfsService2 = new HdfsTemplate().
+////                named("hdfs-1").
+////                abortIfServiceExists().
+////                cluster("My Cluster").
+////                hosts(H1, H2, H3).
+////                assignRoleNameNode().toAnyHost().
+////                assignRoleSecondaryNameNode().toAnyHost().
+////                assignRoleDataNode().toAllHosts().
+////                formatNameNodes().
+////            build(caller);
+//    }
 
-//        Object hdfsService = new HdfsTemplate().
-//                named("hdfs-1").
-//                hosts(H1, H2, H3).
-//                assignRole(HdfsRoleType.NAMENODE).to(H1).
-//                assignRole(HdfsRoleType.SECONDARYNAMENODE).to(H2).
-//                assignRole(HdfsRoleType.DATANODE).toAllHosts().
-//                formatNameNodes().
-//            build(caller);
-        
-        Object hdfsService2 = new HdfsTemplate().
-                named("hdfs-1").
-                abortIfServiceExists().
-                cluster("My Cluster").
-                hosts(H1, H2, H3).
-                assignRoleNameNode().toAnyHost().
-                assignRoleSecondaryNameNode().toAnyHost().
-                assignRoleDataNode().toAllHosts().
-                formatNameNodes().
-            build(caller);
-    }
-
-
-    public RoleAssigner<HdfsTemplate> assignRoleNameNode() {
-        return assignRole(HdfsRoleType.NAMENODE);
-    }
-    public RoleAssigner<HdfsTemplate> assignRoleDataNode() {
-        return assignRole(HdfsRoleType.DATANODE);
-    }
-    public RoleAssigner<HdfsTemplate> assignRoleSecondaryNameNode() {
-        return assignRole(HdfsRoleType.SECONDARYNAMENODE);
-    }
 
 }

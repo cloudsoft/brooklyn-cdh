@@ -32,6 +32,9 @@ public class ClouderaCdhNode extends SoftwareProcessEntity {
     public static final BasicAttributeSensor<String> PRIVATE_HOSTNAME =
         [String, "whirr.cm.cdh.node.internal.hostname", "Hostname of this node as known on internal/private subnets"]
     
+    public static final BasicAttributeSensor<String> PRIVATE_IP =
+        [String, "whirr.cm.cdh.node.internal.ip", "IP of this node as known on internal/private subnets"]
+    
     public static final BasicAttributeSensor<String> CDH_HOST_ID =
         [String, "whirr.cm.cdh.node.id", "ID of host as presented to CM (usually internal hostname)"]
 

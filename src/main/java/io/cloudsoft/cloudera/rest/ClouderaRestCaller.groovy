@@ -1,5 +1,7 @@
 package io.cloudsoft.cloudera.rest;
 
+import java.util.List;
+
 import groovyx.net.http.ContentType
 import io.cloudsoft.cloudera.rest.RestDataObjects.ClusterAddInfo
 import io.cloudsoft.cloudera.rest.RestDataObjects.ClusterType
@@ -66,11 +68,13 @@ public class ClouderaRestCaller {
     }
 
     public Object getServicesJson(String clusterName) {
-        println "clusters/${URLParamEncoder.encode(clusterName)}/services"
         return caller.doGet("clusters/${URLParamEncoder.encode(clusterName)}/services")
     }
     public List<String> getServices(String clusterName) {
         return getServicesJson(clusterName).items.collect { it.name }
+    }
+    public List<String> findServicesOfType(String clusterName, ServiceType type) {
+        return getServicesJson(clusterName).items.findAll({ it.type == type.name() }).collect { it.name };
     }
     public List<String> addService(String clusterName, String serviceName, ServiceType serviceType) {
         def body = [items: [[name:serviceName, type:serviceType.name()]] ]
@@ -94,7 +98,6 @@ public class ClouderaRestCaller {
     public List<String> addServiceRoleHosts(String clusterName, String serviceName, 
                 ServiceRoleHostInfo ...rolehosts) {
         def body = [items: rolehosts.collect { ServiceRoleHostInfo h -> h.asMap() } ]
-        println body
         return caller.doPost("clusters/${URLParamEncoder.encode(clusterName)}/"+
             "services/${URLParamEncoder.encode(serviceName)}/", path: "roles", 
             body: body, requestContentType: ContentType.JSON).items.collect { it.name }
@@ -187,7 +190,6 @@ public class ClouderaRestCaller {
         caller.invokeHdfsFormatNameNodes(service, cluster).block(60*1000);
         
         caller.invokeServiceCommand(cluster, service, "start").block(60*1000);
-        
     }
 
 }

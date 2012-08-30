@@ -1,14 +1,13 @@
 package io.cloudsoft.cloudera;
 
-import java.util.Collection;
-
 import groovy.transform.InheritConstructors
 import io.cloudsoft.cloudera.brooklynnodes.ClouderaCdhNode
 import io.cloudsoft.cloudera.brooklynnodes.StartupGroup
 import io.cloudsoft.cloudera.brooklynnodes.WhirrClouderaManager
-import io.cloudsoft.cloudera.builders.HdfsTemplate;
-import io.cloudsoft.cloudera.rest.ClouderaRestCaller;
-import io.cloudsoft.cloudera.rest.RestDataObjects.HdfsRoleType;
+import io.cloudsoft.cloudera.builders.HdfsTemplate
+import io.cloudsoft.cloudera.builders.MapReduceTemplate
+import io.cloudsoft.cloudera.rest.ClouderaRestCaller
+import io.cloudsoft.cloudera.rest.RestDataObjects.HdfsRoleType
 
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -40,15 +39,21 @@ public class SampleClouderaManagedCluster extends AbstractApplication {
     public void postStart(Collection<? extends Location> locations) {
         api = new ClouderaRestCaller(server: whirrCM.getAttribute(WhirrClouderaManager.CLOUDERA_MANAGER_HOSTNAME), authName:"admin", authPass: "admin");
         
-        log.info("Application nodes started, now creating HDFS");
+        log.info("Application nodes started, now creating services");
         
         Object hdfsService = new HdfsTemplate().
-                named("hdfs-1").
                 hosts(whirrCM.getAttribute(WhirrClouderaManager.MANAGED_HOSTS)).
                 assignRole(HdfsRoleType.NAMENODE).toAnyHost().
                 assignRole(HdfsRoleType.SECONDARYNAMENODE).toAnyHost().
                 assignRole(HdfsRoleType.DATANODE).toAllHosts().
                 formatNameNodes().
+            build(api);
+            
+        Object mapredService = new MapReduceTemplate().
+                named("mapreduce-sample").
+                hosts(whirrCM.getAttribute(WhirrClouderaManager.MANAGED_HOSTS)).
+                assignRoleJobTracker().toAnyHost().
+                assignRoleTaskTracker().toAllHosts().
             build(api);
     }
     

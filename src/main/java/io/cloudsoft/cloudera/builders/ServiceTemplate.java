@@ -13,14 +13,22 @@ import java.util.Set;
 
 public abstract class ServiceTemplate<T extends ServiceTemplate<?>> extends AbstractTemplate<T> {
     
-    Set<String> hostIds = new LinkedHashSet<String>();
+    protected String clusterName;
+    @SuppressWarnings("unchecked")
+    public T cluster(String clusterName) {
+        this.clusterName = clusterName;
+        return (T)this;
+    }
+
+    protected Set<String> hostIds = new LinkedHashSet<String>();
     @SuppressWarnings("unchecked")
     public T hosts(String ...hostIds) {
         for (String hostId: hostIds) 
             this.hostIds.add(hostId);
         return (T)this;
     }
-    public T hosts(List hostIds) {
+    @SuppressWarnings("unchecked")
+    public T hosts(Collection<String> hostIds) {
         for (Object hostId: hostIds) {
             // TODO convert from entities etc
             this.hostIds.add(""+hostId);
@@ -28,7 +36,7 @@ public abstract class ServiceTemplate<T extends ServiceTemplate<?>> extends Abst
         return (T)this;
     }
 
-    private int roleIndex;
+    private int roleIndex=0;
     public class RoleAssigner<U> {
         String type;
         String name;
@@ -56,7 +64,6 @@ public abstract class ServiceTemplate<T extends ServiceTemplate<?>> extends Abst
             return (U)ServiceTemplate.this;
         }
 
-        @SuppressWarnings("unchecked")
         public U toAnyHost() {
             roleIndex++;
             if (ServiceTemplate.this.hostIds.isEmpty()) 
