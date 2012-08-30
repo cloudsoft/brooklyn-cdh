@@ -48,7 +48,6 @@ public class ClouderaCdhNodeDriver extends StartStopSshDriver {
                     "sudo mkdir /etc/cloudera-scm-agent/",
                     "sudo mv etc_cloudera-scm-agent_config.ini /etc/cloudera-scm-agent/config.ini",
                     "tar xzfv scm_prepare_node.tgz",
-                    "cd scm_prepare_node.X"
                     ).execute();
     }
 
@@ -66,7 +65,6 @@ public class ClouderaCdhNodeDriver extends StartStopSshDriver {
         newScript(CUSTOMIZING).
                 failOnNonZeroResultCode().
                 body.append(
-                    CommonCommands.INSTALL_TAR,
                     "cd /tmp/scm_prepare_node.X",
                     "sudo ./scm_prepare_node.sh"+
                         " -h"+getManagerHostname()+

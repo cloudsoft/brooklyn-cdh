@@ -67,7 +67,7 @@ public class ClouderaCdhNode extends SoftwareProcessEntity {
 
     // 7180, 7182, 8088, 8888, 50030, 50060, 50070, 50090, 60010, 60020, 60030
     protected Collection<Integer> getRequiredOpenPorts() {
-        Set result = [22, 7180, 7182, 8088, 8888, 50030, 50060, 50070, 50090, 60010, 60020, 60030];
+        Set result = [22, 2181, 7180, 7182, 8088, 8888, 50030, 50060, 50070, 50090, 60010, 60020, 60030];
         result.addAll(super.getRequiredOpenPorts());
         return result;
     }

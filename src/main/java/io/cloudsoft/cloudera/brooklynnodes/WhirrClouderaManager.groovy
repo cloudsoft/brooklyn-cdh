@@ -75,7 +75,7 @@ public class WhirrClouderaManager extends WhirrCluster {
         Preconditions.checkArgument(getConfig(MEMORY) >= 1000, "We need at least 1GB of memory per machine")
 
         List<String> recipeLines = Lists.newArrayList(
-                "whirr.cluster-name=" + (((String)getConfig(NAME))?:"brooklyn-whirr-cloudera-manager").replaceAll("\\s+","-"),
+                "whirr.cluster-name=" + (((String)getConfig(NAME))?:"brooklyn-"+System.getProperty("user.name")+"-whirr-cloudera-manager").replaceAll("\\s+","-"),
                 "whirr.instance-templates=1 cmserver"
         );
 
@@ -115,7 +115,7 @@ public class WhirrClouderaManager extends WhirrCluster {
 
         try {
             FirewallManager.authorizeIngress(controller.getCompute().apply(clusterSpec), [cmServer] as Set, clusterSpec,
-                ["0.0.0.0/0"], 7180, 7182, 8088, 8888, 50030, 50060, 50070, 50090, 60010, 60020, 60030);
+                ["0.0.0.0/0"], 22, 2181, 7180, 7182, 8088, 8888, 50030, 50060, 50070, 50090, 60010, 60020, 60030);
             authorizePing(controller.getCompute().apply(clusterSpec), [cmServer], clusterSpec);
         } catch (Throwable t) {
             log.warn("can't setup firewall/ping: "+t);
