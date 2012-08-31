@@ -99,8 +99,8 @@ public class MapReduceTemplate extends ServiceTemplate<MapReduceTemplate> {
         if (jobtrackerLocalDataDir!=null)
             RestDataObjects.setConfig(config, "jobtracker_mapred_local_dir_list", jobtrackerLocalDataDir);
         if (enableMetrics) {
-            RestDataObjects.setMetricsRoleConfig(config, MapReduceRoleType.JOBTRACKER.name());
-            RestDataObjects.setMetricsRoleConfig(config, MapReduceRoleType.TASKTRACKER.name());
+            RestDataObjects.setMetricsRoleConfig(config, name, MapReduceRoleType.JOBTRACKER.name());
+            RestDataObjects.setMetricsRoleConfig(config, name, MapReduceRoleType.TASKTRACKER.name());
         }
         Map<?,?> cfgOut = super.convertConfig(config);
         log.debug("MapReduce ${name} converted config: "+cfgOut);

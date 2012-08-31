@@ -179,13 +179,27 @@ public class RestDataObjects {
         occurrences.each { it.value = value };
         return occurrences;
     }
-    public static List setMetricsRoleConfig(Object config, String role) {
-        def configSet = setRoleConfig(config, role, "hadoop_metrics2_safety_valve",
+    public static List setMetricsRoleConfig(Object config, String service, String role) {
+        def configSet1 = setRoleConfig(config, role, "hadoop_metrics2_safety_valve",
             "*.sink.file.class=org.apache.hadoop.metrics2.sink.FileSink\n"+"\n"+
             role.toLowerCase()+".sink.file.filename=/tmp/"+role.toLowerCase()+"-metrics.out\n"
         );
-        log.info("Enabled metrics config for "+configSet.size()+" "+role+" nodes");
-        return configSet;
+        def configSet2 = setRoleConfig(config, role, "hadoop_metrics_safety_valve",
+            """mapred.class=org.apache.hadoop.metrics.file.FileContext
+mapred.period=10
+mapred.fileName=/tmp/mrmetrics.log
+jvm.class=org.apache.hadoop.metrics.file.FileContext
+jvm.period=10
+jvm.fileName=/tmp/jvmmetrics.log
+""");
+    
+        if (configSet1) 
+            log.info("Enabled metrics2 config for "+role+" nodes in "+service);
+        else if (configSet2) 
+            log.info("Enabled metrics config for "+role+" nodes in "+service);
+        else
+            log.warn("No configuration found to enable metrics for "+role+" nodes in "+service);
+        return configSet1+configSet2;
     }
        
     /** converts strings of anything but alphanums and - and _ to a single - (and collapsing multiple -'s) */

@@ -51,8 +51,8 @@ public class HdfsTemplate extends ServiceTemplate<HdfsTemplate> {
     @Override
     protected Map<?, ?> convertConfig(Object config) {
         if (enableMetrics) {
-            RestDataObjects.setMetricsRoleConfig(config, HdfsRoleType.DATANODE.name());
-            RestDataObjects.setMetricsRoleConfig(config, HdfsRoleType.NAMENODE.name());
+            RestDataObjects.setMetricsRoleConfig(config, name, HdfsRoleType.DATANODE.name());
+            RestDataObjects.setMetricsRoleConfig(config, name, HdfsRoleType.NAMENODE.name());
         }
         Map<?,?> cfgOut = super.convertConfig(config);
         log.debug("HDFS ${name} converted config: "+cfgOut);

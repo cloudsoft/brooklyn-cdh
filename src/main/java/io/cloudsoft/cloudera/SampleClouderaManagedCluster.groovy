@@ -76,8 +76,11 @@ public class SampleClouderaManagedCluster extends AbstractApplication {
                 buildWithEntity(services);
 
         // seems to want a restart of ZK then HB after configuring HB                
+        log.info("Restarting Zookeeper after configuration change");
         zk.restart();
+        log.info("Restarting HBase after Zookeeper restart");
         hb.restart();
+        log.info("All CDH services should now be ready -- "+whirrCM.getAttribute(WhirrClouderaManager.CLOUDERA_MANAGER_URL));
     }
     
 
@@ -101,10 +104,10 @@ public class SampleClouderaManagedCluster extends AbstractApplication {
         //dump some info
         Entities.dumpInfo(app)
 
-        //open a console to interact
-        Binding b = new Binding();
-        b.setVariable("app", app);
-        new groovy.ui.Console(b).run();
+//        //open a console to interact
+//        Binding b = new Binding();
+//        b.setVariable("app", app);
+//        new groovy.ui.Console(b).run();
     }
 
 }

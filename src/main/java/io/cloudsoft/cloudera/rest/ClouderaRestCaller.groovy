@@ -7,6 +7,7 @@ import io.cloudsoft.cloudera.rest.RestDataObjects.ClusterAddInfo
 import io.cloudsoft.cloudera.rest.RestDataObjects.ClusterType
 import io.cloudsoft.cloudera.rest.RestDataObjects.HdfsRoleType;
 import io.cloudsoft.cloudera.rest.RestDataObjects.HostAddInfo
+import io.cloudsoft.cloudera.rest.RestDataObjects.MapReduceRoleType;
 import io.cloudsoft.cloudera.rest.RestDataObjects.RemoteCommand;
 import io.cloudsoft.cloudera.rest.RestDataObjects.RemoteCommandSet;
 import io.cloudsoft.cloudera.rest.RestDataObjects.ServiceRoleHostInfo
@@ -146,7 +147,7 @@ public class ClouderaRestCaller {
     }
 
     public static void main(String[] args) {
-        def SERVER = "ec2-50-16-132-190.compute-1.amazonaws.com";
+        def SERVER = "ec2-23-20-72-57.compute-1.amazonaws.com";
 //        def H1 = "ip-10-202-94-94.ec2.internal";
 //        def H2 = "ip-10-196-119-79.ec2.internal";
 //        def H3 = "ip-10-118-190-146.ec2.internal";
@@ -162,7 +163,7 @@ public class ClouderaRestCaller {
         }
         def cluster = clusters.iterator().next();
         
-        def services = caller.findServicesOfType(cluster, ServiceType.HBASE);
+        def services = caller.findServicesOfType(cluster, ServiceType.MAPREDUCE);
         println "services: "+services;
         if (!services) {
             String service = "hdfs-"+IdGenerator.makeRandomId(4);
@@ -187,12 +188,12 @@ public class ClouderaRestCaller {
         
         def cfg = caller.getServiceConfig(cluster, service);
         println "role configs at ${service}: "+cfg
-//        println "metrics: "+RestDataObjects.setMetricsRoleConfig(cfg, HdfsRoleType.DATANODE.name());
+        println "metrics: "+RestDataObjects.setMetricsRoleConfig(cfg, service, MapReduceRoleType.JOBTRACKER.name());
         Map cfgOut = RestDataObjects.convertConfigForSetting(cfg, cluster+"-"+service);
         println "role configs to set at ${service}: "+cfgOut
         
         
-        caller.setServiceConfig(cluster, service, cfgOut);
+//        caller.setServiceConfig(cluster, service, cfgOut);
 //        
 //        caller.invokeHdfsFormatNameNodes(service, cluster).block(60*1000);
 //        

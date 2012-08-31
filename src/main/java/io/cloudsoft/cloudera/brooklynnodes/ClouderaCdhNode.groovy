@@ -107,7 +107,7 @@ public class ClouderaCdhNode extends SoftwareProcessEntity {
     public String collectMetrics(@NamedParameter("targetDir") String targetDir) {
         targetDir = targetDir + "/" + getAttribute(CDH_HOST_ID);
         new File(targetDir).mkdir();
-        // TODO allow wildcards
+        // TODO allow wildcards, or batch on server then copy down?
         int i=0;
         for (role in ["datanode","namenode","master","regionserver"]) {
             try {
@@ -116,6 +116,15 @@ public class ClouderaCdhNode extends SoftwareProcessEntity {
             } catch (Exception e) {
                 //not serious, file probably doesn't exist
                 log.debug("Unable to copy /tmp/${role}-metrics.out from ${this} (file may not exist): "+e);
+            }
+        }
+        for (role in ["mr","jvm"]) {
+            try {
+                ((ClouderaCdhNodeDriver)driver).machine.copyFrom(sshTries:1,
+                    "/tmp/${role}metrics.log", targetDir+"/${role}metrics.log");
+            } catch (Exception e) {
+                //not serious, file probably doesn't exist
+                log.debug("Unable to copy /tmp/${role}metrics.log from ${this} (file may not exist): "+e);
             }
         }
         log.debug("Copied ${i} metrics files from ${this}");
