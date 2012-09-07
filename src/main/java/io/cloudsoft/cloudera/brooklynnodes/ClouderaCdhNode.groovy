@@ -18,12 +18,10 @@ import brooklyn.entity.basic.MethodEffector
 import brooklyn.entity.basic.NamedParameter
 import brooklyn.entity.basic.SoftwareProcessEntity
 import brooklyn.entity.basic.lifecycle.ScriptHelper
-import brooklyn.entity.basic.lifecycle.StartStopDriver
 import brooklyn.event.adapter.FunctionSensorAdapter
 import brooklyn.event.basic.BasicAttributeSensor
 import brooklyn.event.basic.BasicConfigKey
 import brooklyn.location.MachineProvisioningLocation
-import brooklyn.location.basic.SshMachineLocation
 import brooklyn.location.basic.jclouds.templates.PortableTemplateBuilder
 import brooklyn.util.flags.SetFromFlag
 
@@ -50,12 +48,9 @@ public class ClouderaCdhNode extends SoftwareProcessEntity {
         [String, "whirr.cm.cdh.node.id", "ID of host as presented to CM (usually internal hostname)"]
 
     public static final Effector<String> COLLECT_METRICS = new MethodEffector<String>(this.&collectMetrics);
-        
-    @Override
-    protected StartStopDriver newDriver(SshMachineLocation loc) {
-        return new ClouderaCdhNodeDriver(this, loc);
-    }
-
+     
+    public Class getDriverInterface() { return ClouderaCdhNodeSshDriver.class; }
+    
     protected Map<String,Object> obtainProvisioningFlags(MachineProvisioningLocation location) {
         Map flags = super.obtainProvisioningFlags(location);
         flags.templateBuilder = new PortableTemplateBuilder().

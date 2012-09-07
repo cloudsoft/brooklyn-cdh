@@ -89,7 +89,7 @@ public class SampleClouderaManagedCluster extends AbstractApplication {
         
     public static void main(String[] argv) {
         ArrayList args = new ArrayList(Arrays.asList(argv));
-        int port = CommandLineUtil.getCommandLineOptionInt(args, "--port", 8081);
+        int port = CommandLineUtil.getCommandLineOptionInt(args, "--port", 8085);
         List<Location> locations = new LocationRegistry().getLocationsById(args ?: [DEFAULT_LOCATION])
 
         SampleClouderaManagedCluster app = new SampleClouderaManagedCluster(name:'Brooklyn Cloudera Managed Cluster');
