@@ -4,7 +4,7 @@ import io.cloudsoft.cloudera.rest.ClouderaRestCaller;
 
 import java.util.List;
 
-import brooklyn.util.IdGenerator;
+import brooklyn.util.text.Identifiers;
 
 public class ClusterTemplate extends AbstractTemplate<ClusterTemplate> {
 
@@ -17,7 +17,7 @@ public class ClusterTemplate extends AbstractTemplate<ClusterTemplate> {
     @Override
     public String build(ClouderaRestCaller caller) {
         List<String> clusters = caller.getClusters();
-        if (name==null) name = "cluster-"+IdGenerator.makeRandomId(8);
+        if (name==null) name = "cluster-"+Identifiers.makeRandomId(8);
         if (clusters.contains(name) && skipIfExists) return name;
         caller.addCluster(name);
         return name;

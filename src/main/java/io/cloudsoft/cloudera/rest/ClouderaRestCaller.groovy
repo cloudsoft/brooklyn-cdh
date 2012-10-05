@@ -12,7 +12,7 @@ import io.cloudsoft.cloudera.rest.RestDataObjects.RemoteCommand;
 import io.cloudsoft.cloudera.rest.RestDataObjects.RemoteCommandSet;
 import io.cloudsoft.cloudera.rest.RestDataObjects.ServiceRoleHostInfo
 import io.cloudsoft.cloudera.rest.RestDataObjects.ServiceType
-import brooklyn.util.IdGenerator
+import brooklyn.util.text.Identifiers;
 
 import com.google.common.base.Preconditions
 
@@ -166,7 +166,7 @@ public class ClouderaRestCaller {
         def services = caller.findServicesOfType(cluster, ServiceType.MAPREDUCE);
         println "services: "+services;
         if (!services) {
-            String service = "hdfs-"+IdGenerator.makeRandomId(4);
+            String service = "hdfs-"+Identifiers.makeRandomId(4);
             services = caller.addService(cluster, service, ServiceType.HDFS);
             println "post-creation, services now: "+services;
         }

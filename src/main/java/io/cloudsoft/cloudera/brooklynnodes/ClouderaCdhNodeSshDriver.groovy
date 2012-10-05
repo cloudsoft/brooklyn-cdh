@@ -106,7 +106,7 @@ public class ClouderaCdhNodeSshDriver extends AbstractSoftwareProcessSshDriver i
             ipAddress = InetAddress.getByName(hostname)?.getHostAddress();
             log.info("IP address (hostname) of "+machine+" for "+entity+" detected as "+ipAddress);
         }
-        entity.setAttribute(ClouderaCdhNode.PRIVATE_IP, hostname);
+        entity.setAttribute(ClouderaCdhNode.PRIVATE_IP, ipAddress);
 
         // but we do need to record the _on-box_ hostname as this is what it is knwon at at the manager        
         String hostname = getHostname();

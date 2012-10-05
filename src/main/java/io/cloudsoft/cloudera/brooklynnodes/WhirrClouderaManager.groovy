@@ -26,6 +26,7 @@ import brooklyn.event.basic.BasicConfigKey
 import brooklyn.extras.whirr.core.WhirrCluster
 import brooklyn.location.Location
 import brooklyn.location.basic.jclouds.JcloudsLocation
+import brooklyn.util.GroovyJavaMethods;
 import brooklyn.util.flags.SetFromFlag
 import brooklyn.util.internal.Repeater
 
@@ -110,6 +111,19 @@ public class WhirrClouderaManager extends WhirrCluster {
         
         Cluster.Instance cmServer = cluster.getInstanceMatching(RolePredicates.role("cmserver"));
         String cmHost = cmServer.publicHostName
+        // the above can come back being the internal hostname, in some situations
+        try {
+            // TODO use NetworkUtils.resolve(cmHost) for more portability
+            InetAddress addr = InetAddress.getByName(cmHost);
+            log.debug("Whirr-reported hostname "+cmHost+" for "+this+" resolved as "+addr);
+        } catch (Exception e) {
+            if (GroovyJavaMethods.truth(cmServer.publicIp)) {
+                log.info("Whirr-reported hostname "+cmHost+" for "+this+" is not resolvable. Reverting to public IP "+cmServer.publicIp);
+                cmHost = cmServer.publicIp;
+            } else {
+                log.warn("Whirr-reported hostname "+cmHost+" for "+this+" is not resolvable. No public IP available. Service may be unreachable.");
+            }
+        }
         setAttribute(CLOUDERA_MANAGER_HOSTNAME, cmHost)
         setAttribute(CLOUDERA_MANAGER_URL, "http://" + cmHost + ":7180/")
 

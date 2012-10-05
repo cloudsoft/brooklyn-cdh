@@ -20,8 +20,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import brooklyn.entity.Entity;
-import brooklyn.util.IdGenerator;
 import brooklyn.util.MutableMap;
+import brooklyn.util.text.Identifiers;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Throwables;
@@ -137,7 +137,7 @@ public abstract class ServiceTemplate<T extends ServiceTemplate<?>> extends Abst
 
     @SuppressWarnings("unchecked")
     public T useDefaultName() {
-        if (name==null) name = getServiceType().name().toLowerCase()+"-"+IdGenerator.makeRandomId(8);
+        if (name==null) name = getServiceType().name().toLowerCase()+"-"+Identifiers.makeRandomId(8);
         return (T)this;
     }
 
@@ -150,7 +150,7 @@ public abstract class ServiceTemplate<T extends ServiceTemplate<?>> extends Abst
         List<String> clusters = caller.getClusters();
         if (clusterName==null) {
             if (!clusters.isEmpty()) clusterName = clusters.iterator().next();
-            else clusterName = "cluster-"+IdGenerator.makeRandomId(6);
+            else clusterName = "cluster-"+Identifiers.makeRandomId(6);
         }
         if (!clusters.contains(clusterName)) caller.addCluster(clusterName);
 
