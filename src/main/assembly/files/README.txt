@@ -3,22 +3,11 @@ brooklyn-cdh
 
 Brooklyn deployment and management of Cloudera Hadoop and Manager clusters.
 
-
-### Setup 1:  Dependencies
-
-You must have the following software installed and compiled (`mvn clean install`):
-
-* `https://github.com/brooklyncentral/brooklyn`: currently snapshot is required, and 
-  below we assume that `brooklyn` is in your path 
-* `https://github.com/ahgittin/whirr-cm`: below we assume this is in a sibling directory to `brooklyn-cdh` 
+To use, configure your cloud credentials then run  ./start.sh  in this directory.
+You can then access the management context in your browser, typically on  localhost:8081.
 
 
-### Compile
-
-To compile brooklyn-cdh, simply `mvn clean install` in the project root.
-
-
-### Setup 2:  Credentials
+### Cloud Credentials
 
 To run, you'll need to specify credentials for your preferred cloud.  This can be done 
 in `~/.brooklyn/brooklyn.properties`:
@@ -37,36 +26,18 @@ For more information see:
 
 ### Run
 
-To run it, either:
+Usage:
 
-* Install the `brooklyn` CLI tool, either from source (as above) or from 
-  http://brooklyncentral.github.com/ and then in root of this project:
+    ./start.sh [--port 8081+] location
 
-        export BROOKLYN_CLASSPATH=target/brooklyn-cdh-0.0.1-SNAPSHOT.jar:export BROOKLYN_CLASSPATH=target/brooklyn-cdh-0.0.1-SNAPSHOT.jar:../whirr-cm/target/whirr-cm-1.1-SNAPSHOT.jar
-        brooklyn launch -a io.cloudsoft.cloudera.SampleClouderaManagedCluster -l aws-ec2:us-east-1
-
-* Grab all dependencies (using maven, or in your favourite IDE) and run the 
-  static `main` in `io.cloudsoft.cloudera.SampleClouderaManagedCluster`.
-
-* Build `mvn assembly:assembly` below then follow the instructions in the generated archive.
+Where location might be `aws-ec2:us-east-1` (the default), `gogrid`, `openstack:endpoint`, etc.
 
 After about 15 minutes, it should print out the URL of the Cloudera Manager node.
 In the meantime you can follow the progress in the Brooklyn console, 
-usually at localhost:8081.  
-
-To destroy the VM's provisioned, either invoke `stop` on the root of the
-application in the Brooklyn console or use the management console of your
-cloud.  VM's are not destroyed simply by killing Brooklyn.
+usually at localhost:8081 (unless a specific port is given).
 
 
-### Executable Assembly
-
-This project can also build a binary redistributable by using mvn assembly:assembly.
-See the source files under `src/main/assembly` for more information.  These can 
-easily be modified for a custom archive.
-
-
-### More about Brooklyn
+### More About Brooklyn
 
 Brooklyn is a code library and framework for managing distributed applications
 in the cloud.  It has been used to create this project for rolling out Cloudera,
