@@ -45,7 +45,7 @@ public class ClouderaCdhNodeSshDriver extends AbstractSoftwareProcessSshDriver i
         machine.copyTo(new ResourceUtils(entity).getResourceFromUrl("classpath://etc_cloudera-scm-agent_config.ini"), "/tmp/etc_cloudera-scm-agent_config.ini");
 
         newScript(INSTALLING).
-                failOnNonZeroResultCode().
+                updateTaskAndFailOnNonZeroResultCode().
                 body.append(
                     CommonCommands.INSTALL_TAR,
                     "cd /tmp", 
@@ -82,7 +82,7 @@ public class ClouderaCdhNodeSshDriver extends AbstractSoftwareProcessSshDriver i
         if (result!=0) {
             log.warn(""+this+" first attempt to install SCM failed, exit code "+result+"; trying again");
             Thread.sleep(15*1000);
-            script.failOnNonZeroResultCode().execute();
+            script.updateTaskAndFailOnNonZeroResultCode().execute();
         }
         
         def caller = new ClouderaRestCaller(server: getManagerHostname(), authName:"admin", authPass:"admin");

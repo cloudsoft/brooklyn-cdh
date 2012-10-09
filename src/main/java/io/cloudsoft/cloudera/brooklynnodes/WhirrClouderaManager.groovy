@@ -124,8 +124,6 @@ public class WhirrClouderaManager extends WhirrCluster {
                 log.warn("Whirr-reported hostname "+cmHost+" for "+this+" is not resolvable. No public IP available. Service may be unreachable.");
             }
         }
-        setAttribute(CLOUDERA_MANAGER_HOSTNAME, cmHost)
-        setAttribute(CLOUDERA_MANAGER_URL, "http://" + cmHost + ":7180/")
 
         try {
             FirewallManager.authorizeIngress(controller.getCompute().apply(clusterSpec), [cmServer] as Set, clusterSpec,
@@ -135,6 +133,9 @@ public class WhirrClouderaManager extends WhirrCluster {
             log.warn("can't setup firewall/ping: "+t);
         }
 
+        setAttribute(CLOUDERA_MANAGER_HOSTNAME, cmHost)
+        setAttribute(CLOUDERA_MANAGER_URL, "http://" + cmHost + ":7180/")
+        
         if (!Repeater.create(timeout:5*60*1000, description:"Waiting for successful REST call to ${this}")
                     .rethrowException().repeat().every(1*TimeUnit.SECONDS)
                     .until() {
@@ -146,7 +147,6 @@ public class WhirrClouderaManager extends WhirrCluster {
         }
         log.debug("Detected REST online for WhirrCM ${this}")
         connectSensors();
-        
         //TODO accept default license / configurable license ? (is just a gui thing though...)
         
         //TODO change password on server, ensure RestCallers are reset to use right password
