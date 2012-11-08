@@ -29,7 +29,10 @@ public class HdfsTemplate extends ServiceTemplate<HdfsTemplate> {
 
     protected boolean enableMetrics=false;
     public HdfsTemplate enableMetrics() {
-        enableMetrics = true;
+        return enableMetrics(true);
+    }
+    public HdfsTemplate enableMetrics(boolean metricsEnabled) {
+        enableMetrics = metricsEnabled;
         return this;
     }
 

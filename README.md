@@ -42,7 +42,7 @@ To run it, either:
 * Install the `brooklyn` CLI tool, either from source (as above) or from 
   http://brooklyncentral.github.com/ and then in root of this project:
 
-        export BROOKLYN_CLASSPATH=target/brooklyn-cdh-0.0.1-SNAPSHOT.jar:export BROOKLYN_CLASSPATH=target/brooklyn-cdh-0.0.1-SNAPSHOT.jar:../whirr-cm/target/whirr-cm-1.1-SNAPSHOT.jar
+        export BROOKLYN_CLASSPATH=target/brooklyn-cdh-1.0.0-SNAPSHOT.jar:../whirr-cm/target/whirr-cm-1.1-SNAPSHOT.jar
         brooklyn launch -a io.cloudsoft.cloudera.SampleClouderaManagedCluster -l aws-ec2:us-east-1
 
 * Grab all dependencies (using maven, or in your favourite IDE) and run the 

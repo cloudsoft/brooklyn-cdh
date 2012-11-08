@@ -3,6 +3,7 @@ package io.cloudsoft.cloudera;
 import groovy.transform.InheritConstructors
 import io.cloudsoft.cloudera.brooklynnodes.AllServices
 import io.cloudsoft.cloudera.brooklynnodes.ClouderaCdhNode
+import io.cloudsoft.cloudera.brooklynnodes.ClouderaService
 import io.cloudsoft.cloudera.brooklynnodes.StartupGroup
 import io.cloudsoft.cloudera.brooklynnodes.WhirrClouderaManager
 import io.cloudsoft.cloudera.builders.HBaseTemplate
@@ -38,12 +39,20 @@ public class SampleClouderaManagedCluster extends AbstractApplication {
         initialSize: 4, 
         factory: ClouderaCdhNode.newFactory().setConfig(ClouderaCdhNode.MANAGER, whirrCM));
 
-    // Separate high-level Services bucket, populated below
     AllServices services = new AllServices(this, name: "Cloudera Services");
+    public AllServices getServices() { return services; }
+
+    boolean launchDefaultServices = true;
+    public void launchDefaultServices(boolean enabled) { launchDefaultServices = enabled; }    
     
     public void postStart(Collection<? extends Location> locations) {
-        log.info("Application nodes started, now creating services");
-        
+        if (launchDefaultServices) {
+            log.info("Application nodes started, now creating services");
+            startServices(true, true);
+        }
+    }
+
+    public void startServices(boolean isCertificationCluster, boolean includeHbase) {
         // create these in sequence
         // following builds with sensible defaults, showing a few different syntaxes
         
@@ -53,7 +62,7 @@ public class SampleClouderaManagedCluster extends AbstractApplication {
                 assignRole(HdfsRoleType.SECONDARYNAMENODE).toAnyHost().
                 assignRole(HdfsRoleType.DATANODE).toAllHosts().
                 formatNameNodes().
-                enableMetrics().
+                enableMetrics(isCertificationCluster).
                 buildWithEntity(services, manager: whirrCM);
             
         new MapReduceTemplate().
@@ -61,29 +70,33 @@ public class SampleClouderaManagedCluster extends AbstractApplication {
                 manager(whirrCM).discoverHostsFromManager().
                 assignRoleJobTracker().toAnyHost().
                 assignRoleTaskTracker().toAllHosts().
-                enableMetrics().
+                enableMetrics(isCertificationCluster).
                 buildWithEntity(services);
 
-        def zk = new ZookeeperTemplate().
+        ClouderaService zk = new ZookeeperTemplate().
                 manager(whirrCM).discoverHostsFromManager().
                 assignRoleServer().toAnyHost().
                 buildWithEntity(services);
 
-        def hb = new HBaseTemplate().
+        ClouderaService hb = null;
+        if (includeHbase) {
+            hb = new HBaseTemplate().
                 manager(whirrCM).discoverHostsFromManager().
                 assignRoleMaster().toAnyHost().
                 assignRoleRegionServer().toAllHosts().
                 buildWithEntity(services);
-
-        // seems to want a restart of ZK then HB after configuring HB                
+        }
+                
+        // seems to want a restart of ZK then HB after configuring HB
         log.info("Restarting Zookeeper after configuration change");
         zk.restart();
-        log.info("Restarting HBase after Zookeeper restart");
-        hb.restart();
-        log.info("All CDH services should now be ready -- "+whirrCM.getAttribute(WhirrClouderaManager.CLOUDERA_MANAGER_URL));
+        if (hb) {
+            log.info("Restarting HBase after Zookeeper restart");
+            hb.restart();
+        }
+        log.info("CDH services now online -- "+whirrCM.getAttribute(WhirrClouderaManager.CLOUDERA_MANAGER_URL));
     }
     
-
     // can be started in usual Java way, or (bypassing method below)
     // with brooklyn command-line
         
@@ -92,25 +105,25 @@ public class SampleClouderaManagedCluster extends AbstractApplication {
         SampleClouderaManagedCluster app = new SampleClouderaManagedCluster(name:'Brooklyn Cloudera Managed Cluster');
             
         try {
-            BrooklynLauncher.newLauncher().managing(app).
+            BrooklynLauncher.newLauncher().
+                managing(app).
                 webconsolePort(CommandLineUtil.getCommandLineOption(args, "--port", "8081+")).
                 launch();
                 
             List<Location> locations = new LocationRegistry().getLocationsById(args ?: [DEFAULT_LOCATION])
             
-            app.start(locations)
+            app.launchDefaultServices(false);
+            app.start(locations);
             
         } catch (Throwable t) {
             log.warn("FAILED TO START "+app+": "+t, t);
         }
         
-        //dump some info
-        Entities.dumpInfo(app)
+        // describe what we've build
+        Entities.dumpInfo(app);
 
-//        //open a console to interact
-//        Binding b = new Binding();
-//        b.setVariable("app", app);
-//        new groovy.ui.Console(b).run();
+        // now manually start some services (but not hbase)
+        app.startServices(true, false);
     }
 
 }
