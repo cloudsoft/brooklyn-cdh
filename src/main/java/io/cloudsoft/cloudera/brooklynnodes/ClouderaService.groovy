@@ -75,7 +75,6 @@ public class ClouderaService extends AbstractEntity implements Startable {
         if (getAttribute(SERVICE_STATE)!=null) {
             throw new IllegalStateException("${this} is already created");
         }
-        getManagementContext().manage(this);
         setAttribute(SERVICE_STATE, Lifecycle.STARTING);
         
         log.info("Creating CDH service ${this}");

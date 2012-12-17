@@ -7,6 +7,7 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import brooklyn.util.flags.FlagUtils
+import brooklyn.util.text.Strings;
 
 public class RestDataObjects {
 
@@ -65,14 +66,20 @@ public class RestDataObjects {
     }
     
     public static class ServiceRoleHostInfo extends Mappable {
+        public static ServiceRoleHostInfo newInstance(String clusterName, Object roleType, String hostId) {
+            return new ServiceRoleHostInfo(RestDataObjects.tidy(
+                (clusterName?clusterName+"-":"")+""+(""+roleType).toLowerCase()+"-"+hostId+
+                (clusterName?"":"-"+Strings.makeRandomId(4))), ""+roleType, hostId);
+        }
         public ServiceRoleHostInfo(Object roleType, String hostId) {
-            this(RestDataObjects.tidy((""+roleType).toLowerCase()+"-"+hostId), ""+roleType, hostId);
+            this(RestDataObjects.tidy((""+roleType).toLowerCase()+"_"+hostId), ""+roleType, hostId);
         }
         public ServiceRoleHostInfo(String roleName, Object roleType, String hostId) {
             name = roleName;
             type = ""+roleType;
             hostRef = [hostId: hostId];
         }
+        
         public String name, type;
         public Map hostRef;
     }
@@ -202,9 +209,10 @@ jvm.fileName=/tmp/jvmmetrics.log
         return configSet1+configSet2;
     }
        
-    /** converts strings of anything but alphanums and - and _ to a single - (and collapsing multiple -'s) */
+    /** converts strings of anything but alphanums and _ to a single - (and collapsing multiple such);
+     * NB '-' (hyphen) removed as valid char for v2 API because it implies a very specific format */
     public static String tidy(String s) {
-        return s.replaceAll("-*[^-_A-Za-z0-9]-*","-");
+        return s.replaceAll("[^_A-Za-z0-9]+","_");
     }
     public static Object toJsonType(Object x) {
         if (x in String) return x;

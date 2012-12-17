@@ -2,6 +2,9 @@ package io.cloudsoft.cloudera.rest;
 
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import groovyx.net.http.ContentType
 import io.cloudsoft.cloudera.rest.RestDataObjects.ClusterAddInfo
 import io.cloudsoft.cloudera.rest.RestDataObjects.ClusterType
@@ -19,6 +22,8 @@ import com.google.common.base.Preconditions
 /** requires server, authName, authPass in constructor */    
 public class ClouderaRestCaller {
 
+    private static final Logger log = LoggerFactory.getLogger(ClouderaRestCaller.class);
+    
     public static ClouderaRestCaller newInstance(String server, String user, String pass) {
         return new ClouderaRestCaller(server:server, authName:user, authPass:pass);
     }
@@ -38,7 +43,7 @@ public class ClouderaRestCaller {
         Preconditions.checkNotNull(authName, "server");
         Preconditions.checkNotNull(authPass, "server");
         _caller = new RestCaller(context: "Cloudera Manager at "+server,
-            urlBase: ""+protocol+"://"+server+":"+port+"/api/v1/",
+            urlBase: ""+protocol+"://"+server+":"+port+"/api/v2/",
             authName: authName, authPass: authPass);
         return _caller;
     }
@@ -52,7 +57,7 @@ public class ClouderaRestCaller {
     public List addHost(HostAddInfo host) { addHosts(host) }
     public List addHosts(HostAddInfo ...hosts) {
         def body = [items: (hosts as List).collect { it.asMap(false) } ]
-        return caller.doPost("", path: "hosts", body: body, requestContentType: ContentType.JSON).items.collect { it.hostname }
+        return caller.doPost("hosts", body: body, requestContentType: ContentType.JSON).items.collect { it.hostname }
     }
     
     public Object getClustersJson() {
@@ -65,7 +70,7 @@ public class ClouderaRestCaller {
     public List addCluster(ClusterAddInfo cluster) { addClusters(cluster) }
     public List addClusters(ClusterAddInfo ...clusters) {
         def body = [items: (clusters as List).collect { it.asMap(false) } ]
-        return caller.doPost("", path: "clusters", body: body, requestContentType: ContentType.JSON).items.collect { it.name }
+        return caller.doPost("clusters", body: body, requestContentType: ContentType.JSON).items.collect { it.name }
     }
 
     public Object getServicesJson(String clusterName) {
@@ -79,7 +84,7 @@ public class ClouderaRestCaller {
     }
     public List<String> addService(String clusterName, String serviceName, ServiceType serviceType) {
         def body = [items: [[name:serviceName, type:serviceType.name()]] ]
-        return caller.doPost("clusters/${URLParamEncoder.encode(clusterName)}/", path: "services", body: body, requestContentType: ContentType.JSON).items.collect { it.name }
+        return caller.doPost("clusters/${URLParamEncoder.encode(clusterName)}/services", body: body, requestContentType: ContentType.JSON).items.collect { it.name }
     }
 
     public Object getServiceRolesJson(String clusterName, String serviceName) {
@@ -104,12 +109,12 @@ public class ClouderaRestCaller {
                 ServiceRoleHostInfo ...rolehosts) {
         def body = [items: rolehosts.collect { ServiceRoleHostInfo h -> h.asMap() } ]
         return caller.doPost("clusters/${URLParamEncoder.encode(clusterName)}/"+
-            "services/${URLParamEncoder.encode(serviceName)}/", path: "roles", 
+            "services/${URLParamEncoder.encode(serviceName)}/roles",  
             body: body, requestContentType: ContentType.JSON).items.collect { it.name }
     }
     public RemoteCommand invokeServiceCommand(String clusterName, String serviceName, String command) {
         Object commandJson = caller.doPost("clusters/${URLParamEncoder.encode(clusterName)}/"+
-            "services/${URLParamEncoder.encode(serviceName)}/commands/", path: command);
+            "services/${URLParamEncoder.encode(serviceName)}/commands/${command}");
         return RemoteCommand.fromJson(commandJson, this);
     }
     public Object getServiceRoleConfig(String clusterName, String serviceName, String roleName, boolean full=true) {
@@ -147,14 +152,17 @@ public class ClouderaRestCaller {
     }
 
     public static void main(String[] args) {
-        def SERVER = "ec2-23-20-72-57.compute-1.amazonaws.com";
+        def SERVER = "54.234.10.239";
 //        def H1 = "ip-10-202-94-94.ec2.internal";
 //        def H2 = "ip-10-196-119-79.ec2.internal";
 //        def H3 = "ip-10-118-190-146.ec2.internal";
         
         def caller = new ClouderaRestCaller(server: SERVER, authName:"admin", authPass:"admin");
         println caller.getHostsJson();
-        
+
+//        caller.addServiceRoleHosts("cluster-h51sjz", "hdfs-V7He3IWr", 
+//            new ServiceRoleHostInfo(name, type, host) );
+                
         def clusters = caller.getClusters();
         println clusters;
         if (!clusters) {

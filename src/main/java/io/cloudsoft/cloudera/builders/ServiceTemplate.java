@@ -20,6 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import brooklyn.entity.Entity;
+import brooklyn.entity.basic.Entities;
 import brooklyn.util.MutableMap;
 import brooklyn.util.text.Identifiers;
 
@@ -81,17 +82,11 @@ public abstract class ServiceTemplate<T extends ServiceTemplate<?>> extends Abst
     private int roleIndex=0;
     public class RoleAssigner<U> {
         String type;
-        String name;
         
         public RoleAssigner(String roleType) {
             this.type = roleType;
         }
         
-        public RoleAssigner<U> named(String name) {
-            this.name = name;
-            return this;
-        }
-
         @SuppressWarnings("unchecked")
         public U to(String host) {
             apply(Arrays.asList(host));
@@ -123,8 +118,7 @@ public abstract class ServiceTemplate<T extends ServiceTemplate<?>> extends Abst
         void apply(Collection<String> hosts) {
             for (String host: hosts) {
                 hostIds.add(host);
-                ServiceTemplate.this.roles.add(
-                        name!=null ? new ServiceRoleHostInfo(name, type, host) : new ServiceRoleHostInfo(type, host));
+                ServiceTemplate.this.roles.add(ServiceRoleHostInfo.newInstance(getName(), type, host));
             }
         }
     }
@@ -194,6 +188,7 @@ public abstract class ServiceTemplate<T extends ServiceTemplate<?>> extends Abst
             flags2.put("name", name);
         }
         ClouderaService result = new ClouderaService(flags2, owner);
+        Entities.manage(result);
         result.create();
         try { 
             // pause a bit after creation, to ensure it really is created

@@ -48,7 +48,10 @@ public class MapReduceTemplate extends ServiceTemplate<MapReduceTemplate> {
 
     protected boolean enableMetrics=false;
     public MapReduceTemplate enableMetrics() {
-        enableMetrics = true;
+        return enableMetrics(true);
+    }
+    public MapReduceTemplate enableMetrics(boolean metricsEnabled) {
+        enableMetrics = metricsEnabled;
         return this;
     }
 

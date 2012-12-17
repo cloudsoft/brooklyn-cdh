@@ -18,10 +18,10 @@ public class RestCaller {
     protected HTTPBuilder newHttpBuilder(String urlExtension) {
         def http = new HTTPBuilder( urlBase + urlExtension )
         if (authName!=null && authPass!=null) http.auth.basic authName, authPass;
-        http.handler.failure = { resp ->
-            log.warn "Unexpected failure: ${urlBase+urlExtension} -> ${resp.statusLine} ${resp.status} ${resp.data} ${resp.responseData}"
-            resp.headers.each { log.info "  header ${it}" }
-            log.warn "Details: "+resp
+        http.handler.failure = { resp, data ->
+            log.warn "Unexpected failure: ${urlBase+urlExtension} (rethrowing)\n  ${resp.statusLine} ${resp.status} ${resp.data} ${resp.responseData}\n"+
+                "  headers:"+resp.headers.collect().inject("", {r,i -> r+"  "+i })+"\n"+
+                "  data:  ${data}"
             throw new IllegalStateException("${context} could not process request ("+resp.statusLine+")")
         }
         return http;
@@ -38,11 +38,22 @@ public class RestCaller {
     }
     
     public Object doPost(Map props=[:], String urlExtension) {
-        log.debug "POST "+urlBase+urlExtension+" : "+props
+        Map props2 = [:] + props
+        props2.remove "body"
+        def json = new groovy.json.JsonBuilder()
+        json.call(props["body"])
+        log.debug "POST "+urlBase+urlExtension+" : "+props2+" ("+Thread.currentThread()+")\n  "+
+            json.toString()
         Object result;
         Object o = newHttpBuilder(urlExtension).post( props ) { resp, data ->
-            if (resp.status==200) result = data;
-            else throw new IllegalStateException("${context} responded: "+resp)
+            if (resp.status==200) {
+                log.debug("POST RESULT 200 - "+data+" ("+Thread.currentThread()+")")
+                result = data;
+            } else {
+                // doesn't usu come here -- see failure handler in newHttpBuilder
+                log.warn("POST RESULT "+resp.status+" - "+data+" ("+Thread.currentThread()+")")
+                throw new IllegalStateException("${context} responded: "+resp)
+            }
         }
     }
 

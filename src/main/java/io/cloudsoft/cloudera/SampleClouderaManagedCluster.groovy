@@ -15,15 +15,18 @@ import io.cloudsoft.cloudera.rest.RestDataObjects.HdfsRoleType
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
+import brooklyn.catalog.Catalog;
 import brooklyn.entity.Entity
 import brooklyn.entity.basic.AbstractApplication
 import brooklyn.entity.basic.Entities
 import brooklyn.entity.group.DynamicCluster
 import brooklyn.launcher.BrooklynLauncher
 import brooklyn.location.Location
-import brooklyn.location.basic.LocationRegistry
 import brooklyn.util.CommandLineUtil
 
+@Catalog(name="Cloudera CDH4", 
+    description="Launches Cloudera Distribution for Hadoop Manager with a Cloudera Manager and an initial cluster of 4 CDH nodes (resizable) and default services including HDFS, MapReduce, and HBase",
+    iconUrl="classpath://io/cloudsoft/cloudera/cloudera.jpg")
 @InheritConstructors
 public class SampleClouderaManagedCluster extends AbstractApplication {
 
@@ -105,12 +108,12 @@ public class SampleClouderaManagedCluster extends AbstractApplication {
         SampleClouderaManagedCluster app = new SampleClouderaManagedCluster(name:'Brooklyn Cloudera Managed Cluster');
             
         try {
-            BrooklynLauncher.newLauncher().
+            def server = BrooklynLauncher.newLauncher().
                 managing(app).
                 webconsolePort(CommandLineUtil.getCommandLineOption(args, "--port", "8081+")).
                 launch();
                 
-            List<Location> locations = new LocationRegistry().getLocationsById(args ?: [DEFAULT_LOCATION])
+            List<Location> locations = server.getManagementContext().getLocationRegistry().resolve(args ?: [DEFAULT_LOCATION])
             
             app.launchDefaultServices(false);
             app.start(locations);
