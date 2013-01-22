@@ -21,7 +21,7 @@ public class ClouderaRestCallerTest {
     private class MockClouderaWebRequestProcessor implements SimpleWebRequestProcessor {
         @Override
         public Object handle(String path, Map query, SimpleWebResponder responder) {
-            if (path.startsWith("api/v1/")) {
+            if (path.startsWith("api/v2/")) {
                 path = path.substring(7);
                 if ("clusters".equals(path)) return responder.json([items:[[name:"Cluster 1", version:"CDH4"]]]);
             }
