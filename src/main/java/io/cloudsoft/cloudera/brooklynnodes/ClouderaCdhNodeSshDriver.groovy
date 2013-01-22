@@ -69,6 +69,8 @@ public class ClouderaCdhNodeSshDriver extends AbstractSoftwareProcessSshDriver i
             getEntity());
         log.info(""+this+" got manager hostname as "+getManagerHostname());
         
+        waitForManagerPingable();
+        
         def script = newScript(CUSTOMIZING).
                 body.append(
                     "cd /tmp/scm_prepare_node.X",
@@ -116,6 +118,23 @@ public class ClouderaCdhNodeSshDriver extends AbstractSoftwareProcessSshDriver i
         }
         entity.setAttribute(ClouderaCdhNode.PRIVATE_HOSTNAME, hostname);
         
+    }
+    
+    public void waitForManagerPingable() {
+        def script = newScript("wait-for-manager").
+            body.append(
+                "ping -c 1 "+getManagerHostname());
+        long maxEndTime = System.currentTimeMillis() + 120*1000;
+        int i=0;
+        while (false) {
+            int result = script.execute();
+            if (result==0) return;
+            i++;
+            log.debug("Not yet able to ping manager node "+getManagerHostname()+" from "+machine+" for "+entity+" (attempt "+i+")");
+            if (System.currentTimeMillis()>maxEndTime)
+                throw new IllegalStateException("Unable to ping manager node "+getManagerHostname()+" from "+machine+" for "+entity);
+            Thread.sleep(1000);
+        }
     }
 
     @Override
