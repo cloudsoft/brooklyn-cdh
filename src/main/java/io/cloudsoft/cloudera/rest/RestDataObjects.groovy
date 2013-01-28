@@ -68,7 +68,10 @@ public class RestDataObjects {
     public static class ServiceRoleHostInfo extends Mappable {
         public static ServiceRoleHostInfo newInstance(String clusterName, Object roleType, String hostId) {
             return new ServiceRoleHostInfo(RestDataObjects.tidy(
-                (clusterName?clusterName+"-":"")+""+(""+roleType).toLowerCase()+"-"+hostId+
+                // FIXME use smart shortener (cf jclouds location); cm server has max 63 chars
+                // format is eg. mapreduce_sample_jobtracker_domU_12_31_39_0E_C6_A3_compute_1_internal
+                (clusterName?clusterName+"-":"")+""+(""+roleType).toLowerCase()+"-"+
+                    hostId.substring(0, hostId.length()>16 ? 16 : hostId.length())+
                 (clusterName?"":"-"+Strings.makeRandomId(4))), ""+roleType, hostId);
         }
         public ServiceRoleHostInfo(Object roleType, String hostId) {
