@@ -126,7 +126,7 @@ public class ClouderaCdhNodeSshDriver extends AbstractSoftwareProcessSshDriver i
                 "ping -c 1 "+getManagerHostname());
         long maxEndTime = System.currentTimeMillis() + 120*1000;
         int i=0;
-        while (false) {
+        while (true) {
             int result = script.execute();
             if (result==0) return;
             i++;
