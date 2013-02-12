@@ -1,5 +1,7 @@
 package io.cloudsoft.cloudera;
 
+import java.util.Map;
+
 import groovy.transform.InheritConstructors
 import io.cloudsoft.cloudera.brooklynnodes.AllServices
 import io.cloudsoft.cloudera.brooklynnodes.ClouderaCdhNode
@@ -15,11 +17,13 @@ import io.cloudsoft.cloudera.rest.RestDataObjects.HdfsRoleType
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-import brooklyn.catalog.Catalog;
+import brooklyn.catalog.Catalog
+import brooklyn.enricher.basic.SensorPropagatingEnricher
 import brooklyn.entity.Entity
 import brooklyn.entity.basic.AbstractApplication
 import brooklyn.entity.basic.Entities
 import brooklyn.entity.group.DynamicCluster
+import brooklyn.event.AttributeSensor
 import brooklyn.launcher.BrooklynLauncher
 import brooklyn.location.Location
 import brooklyn.util.CommandLineUtil
@@ -27,16 +31,28 @@ import brooklyn.util.CommandLineUtil
 @Catalog(name="Cloudera CDH4", 
     description="Launches Cloudera Distribution for Hadoop Manager with a Cloudera Manager and an initial cluster of 4 CDH nodes (resizable) and default services including HDFS, MapReduce, and HBase",
     iconUrl="classpath://io/cloudsoft/cloudera/cloudera.jpg")
-@InheritConstructors
 public class SampleClouderaManagedCluster extends AbstractApplication {
 
     static final Logger log = LoggerFactory.getLogger(SampleClouderaManagedCluster.class);
     static final String DEFAULT_LOCATION = "aws-ec2:us-east-1";
-    
+    public static final AttributeSensor<String> CLOUDERA_MANAGER_URL = WhirrClouderaManager.CLOUDERA_MANAGER_URL;
+        
+    public SampleClouderaManagedCluster() {
+        super();
+    }
+    public SampleClouderaManagedCluster(Map properties, Entity parent) {
+        super(properties, parent);
+    }
+    public SampleClouderaManagedCluster(Map properties) {
+        super(properties);
+    }
+
     // Admin - Cloudera Manager Node
-    Entity admin = new StartupGroup(this, name: "Cloudera Hosts and Admin");
-    WhirrClouderaManager whirrCM = new WhirrClouderaManager(admin);
-    
+    public final Entity admin = new StartupGroup(this, name: "Cloudera Hosts and Admin");
+    public final WhirrClouderaManager whirrCM = new WhirrClouderaManager(admin);
+    public StartupGroup getAdmin() { return admin; }
+    public WhirrClouderaManager getManager() { return whirrCM; }
+
     // and CDH Hosts ("workers")
     DynamicCluster workerCluster = new DynamicCluster(admin, name: "CDH Nodes", 
         initialSize: 4, 
@@ -47,6 +63,10 @@ public class SampleClouderaManagedCluster extends AbstractApplication {
 
     boolean launchDefaultServices = true;
     public void launchDefaultServices(boolean enabled) { launchDefaultServices = enabled; }    
+
+    {
+        addEnricher(SensorPropagatingEnricher.newInstanceListeningTo(whirrCM, WhirrClouderaManager.CLOUDERA_MANAGER_URL));
+    }
     
     public void postStart(Collection<? extends Location> locations) {
         if (launchDefaultServices) {
