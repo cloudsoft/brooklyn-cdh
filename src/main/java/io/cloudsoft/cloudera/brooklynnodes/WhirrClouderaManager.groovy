@@ -1,5 +1,12 @@
 package io.cloudsoft.cloudera.brooklynnodes;
 
+import java.util.List;
+import java.util.Set;
+
+import org.apache.whirr.ClusterSpec;
+import org.apache.whirr.Cluster.Instance;
+import org.jclouds.compute.ComputeServiceContext;
+
 import io.cloudsoft.cloudera.rest.ClouderaRestCaller
 
 import java.util.concurrent.TimeUnit
@@ -11,7 +18,9 @@ import org.apache.whirr.RolePredicates
 import org.apache.whirr.Cluster.Instance
 import org.apache.whirr.service.FirewallManager
 import org.jclouds.aws.util.AWSUtils
+import org.jclouds.cloudservers.CloudServersApiMetadata;
 import org.jclouds.compute.ComputeServiceContext
+import org.jclouds.ec2.EC2ApiMetadata;
 import org.jclouds.ec2.EC2Client
 import org.jclouds.ec2.domain.IpProtocol
 import org.slf4j.Logger
@@ -27,6 +36,7 @@ import brooklyn.extras.whirr.core.WhirrCluster
 import brooklyn.location.Location
 import brooklyn.location.basic.jclouds.JcloudsLocation
 import brooklyn.util.GroovyJavaMethods;
+import brooklyn.util.NetworkUtils;
 import brooklyn.util.flags.SetFromFlag
 import brooklyn.util.internal.Repeater
 
@@ -113,8 +123,8 @@ public class WhirrClouderaManager extends WhirrCluster {
         String cmHost = cmServer.publicHostName
         // the above can come back being the internal hostname, in some situations
         try {
-            // TODO use NetworkUtils.resolve(cmHost) for more portability
-            InetAddress addr = InetAddress.getByName(cmHost);
+            InetAddress addr = NetworkUtils.resolve(cmHost);
+            if (addr==null) throw new NullPointerException("Cannot resolve "+cmHost);
             log.debug("Whirr-reported hostname "+cmHost+" for "+this+" resolved as "+addr);
         } catch (Exception e) {
             if (GroovyJavaMethods.truth(cmServer.publicIp)) {
@@ -126,7 +136,7 @@ public class WhirrClouderaManager extends WhirrCluster {
         }
 
         try {
-            FirewallManager.authorizeIngress(controller.getCompute().apply(clusterSpec), [cmServer] as Set, clusterSpec,
+            authorizeIngress(controller.getCompute().apply(clusterSpec), [cmServer] as Set, clusterSpec,
                 ["0.0.0.0/0"], 22, 2181, 7180, 7182, 8088, 8888, 50030, 50060, 50070, 50090, 60010, 60020, 60030);
             authorizePing(controller.getCompute().apply(clusterSpec), [cmServer], clusterSpec);
         } catch (Throwable t) {
@@ -168,30 +178,64 @@ public class WhirrClouderaManager extends WhirrCluster {
         sensorRegistry.activateAdapters();
     }
     
+    public static void authorizeIngress(ComputeServiceContext computeServiceContext,
+        Set<Instance> instances, ClusterSpec clusterSpec, List<String> cidrs, int... ports) {
+        
+        if (EC2ApiMetadata.CONTEXT_TOKEN.isAssignableFrom(computeServiceContext.getBackendType())) {
+//        from:
+//            FirewallManager.authorizeIngress(computeServiceContext, instances, clusterSpec, cidrs, ports);
+            
+            // This code (or something like it) may be added to jclouds (see
+            // http://code.google.com/p/jclouds/issues/detail?id=336).
+            // Until then we need this temporary workaround.
+            String region = AWSUtils.parseHandle(Iterables.get(instances, 0).getId())[0];
+            EC2Client ec2Client = computeServiceContext.unwrap(EC2ApiMetadata.CONTEXT_TOKEN).getApi();
+            String groupName = "jclouds#" + clusterSpec.getClusterName();
+            for (String cidr : cidrs) {
+                for (int port : ports) {
+                    try {
+                        ec2Client.getSecurityGroupServices()
+                                .authorizeSecurityGroupIngressInRegion(region, groupName,
+                                IpProtocol.TCP, port, port, cidr);
+                    } catch(IllegalStateException e) {
+                        LOG.warn(e.getMessage());
+                        /* ignore, it means that this permission was already granted */
+                    }
+                }
+            }
+        } else {
+            // TODO generalise the above, or support more clouds, or bypass whirr
+            LOG.debug("Skipping port ingress modifications for "+instances+" in cloud "+computeServiceContext.getBackendType());
+        }
+    }
+        
     public static void authorizePing(ComputeServiceContext computeServiceContext,
             Collection<Instance> instances, ClusterSpec clusterSpec) {
         authorizePing(computeServiceContext, instances, clusterSpec, "0.0.0.0/0");
     }
     public static void authorizePing(ComputeServiceContext computeServiceContext,
             Collection<Instance> instances, ClusterSpec clusterSpec, String cidr) {
-      if (computeServiceContext.getProviderSpecificContext().getApi() instanceof EC2Client) {
-        // This code (or something like it) may be added to jclouds (see
-        // http://code.google.com/p/jclouds/issues/detail?id=336).
-        // Until then we need this temporary workaround.
-        String region = AWSUtils.parseHandle(Iterables.get(instances, 0).getId())[0];
-        EC2Client ec2Client = EC2Client.class.cast(
-            computeServiceContext.getProviderSpecificContext().getApi());
-        String groupName = "jclouds#" + clusterSpec.getClusterName(); // + "#" + region;
-        log.info("Authorizing ping for "+groupName+": "+cidr);
-        try {
-              ec2Client.getSecurityGroupServices()
-                .authorizeSecurityGroupIngressInRegion(region, groupName,
-                  IpProtocol.ICMP, -1, -1, cidr);
-        } catch(IllegalStateException e) {
-              log.warn("Problem authorizing ping for "+groupName+": "+e.getMessage());
-              /* ignore, it means that this permission was already granted */
+        if (computeServiceContext.getProviderSpecificContext().getApi() instanceof EC2Client) {
+            // This code (or something like it) may be added to jclouds (see
+            // http://code.google.com/p/jclouds/issues/detail?id=336).
+            // Until then we need this temporary workaround.
+            String region = AWSUtils.parseHandle(Iterables.get(instances, 0).getId())[0];
+            EC2Client ec2Client = EC2Client.class.cast(
+                    computeServiceContext.getProviderSpecificContext().getApi());
+            String groupName = "jclouds#" + clusterSpec.getClusterName(); // + "#" + region;
+            log.info("Authorizing ping for "+groupName+": "+cidr);
+            try {
+                ec2Client.getSecurityGroupServices()
+                        .authorizeSecurityGroupIngressInRegion(region, groupName,
+                        IpProtocol.ICMP, -1, -1, cidr);
+            } catch(IllegalStateException e) {
+                log.warn("Problem authorizing ping for "+groupName+": "+e.getMessage());
+                /* ignore, it means that this permission was already granted */
+            }
+        } else {
+            // TODO generalise the above, or support more clouds, or bypass whirr
+            LOG.debug("Skipping ping ingress modifications for "+instances+" in cloud "+computeServiceContext.getBackendType());
         }
-      }
     }
     protected void customizeClusterSpecConfiguration(JcloudsLocation location, PropertiesConfiguration config) {
         super.customizeClusterSpecConfiguration(location, config);
