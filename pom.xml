@@ -45,6 +45,15 @@
     </dependencies>
 
     <repositories>
+        <!-- enable sonatype snapshots repo (only for snapshots) -->
+        <repository>
+            <id>sonatype-nexus-snapshots</id>
+            <name>Sonatype Nexus Snapshots</name>
+            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+            <releases> <enabled>false</enabled> </releases>
+            <snapshots> <enabled>true</enabled> </snapshots>
+        </repository>
+<!--
         <repository>
             <id>cloudsoft-releases</id>
             <url>http://developers.cloudsoftcorp.com/download/maven2/</url>
@@ -58,6 +67,7 @@
                 <checksumPolicy>fail</checksumPolicy>
             </snapshots>
         </repository>
+-->     
         <repository>
             <id>cloudera-releases</id>
             <url>https://repository.cloudera.com/content/groups/cdh-releases-rcs</url>
