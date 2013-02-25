@@ -1,10 +1,8 @@
 package io.cloudsoft.cloudera;
 
-import java.util.Map;
-
-import groovy.transform.InheritConstructors
 import io.cloudsoft.cloudera.brooklynnodes.AllServices
 import io.cloudsoft.cloudera.brooklynnodes.ClouderaCdhNode
+import io.cloudsoft.cloudera.brooklynnodes.ClouderaCdhNodeImpl
 import io.cloudsoft.cloudera.brooklynnodes.ClouderaService
 import io.cloudsoft.cloudera.brooklynnodes.StartupGroup
 import io.cloudsoft.cloudera.brooklynnodes.WhirrClouderaManager
@@ -21,8 +19,11 @@ import brooklyn.catalog.Catalog
 import brooklyn.enricher.basic.SensorPropagatingEnricher
 import brooklyn.entity.Entity
 import brooklyn.entity.basic.AbstractApplication
+import brooklyn.entity.basic.ApplicationBuilder
 import brooklyn.entity.basic.Entities
+import brooklyn.entity.basic.StartableApplication
 import brooklyn.entity.group.DynamicCluster
+import brooklyn.entity.proxying.BasicEntitySpec
 import brooklyn.event.AttributeSensor
 import brooklyn.launcher.BrooklynLauncher
 import brooklyn.location.Location
@@ -31,7 +32,7 @@ import brooklyn.util.CommandLineUtil
 @Catalog(name="Cloudera CDH4", 
     description="Launches Cloudera Distribution for Hadoop Manager with a Cloudera Manager and an initial cluster of 4 CDH nodes (resizable) and default services including HDFS, MapReduce, and HBase",
     iconUrl="classpath://io/cloudsoft/cloudera/cloudera.jpg")
-public class SampleClouderaManagedCluster extends AbstractApplication {
+public class SampleClouderaManagedCluster extends AbstractApplication implements SampleClouderaManagedClusterInterface {
 
     static final Logger log = LoggerFactory.getLogger(SampleClouderaManagedCluster.class);
     static final String DEFAULT_LOCATION = "aws-ec2:us-east-1";
@@ -48,18 +49,27 @@ public class SampleClouderaManagedCluster extends AbstractApplication {
     }
 
     // Admin - Cloudera Manager Node
-    public final Entity admin = new StartupGroup(this, name: "Cloudera Hosts and Admin");
-    public final WhirrClouderaManager whirrCM = new WhirrClouderaManager(admin);
+    protected Entity admin;
+    protected WhirrClouderaManager whirrCM;
+    protected DynamicCluster workerCluster;
+    protected AllServices services;
+    
     public StartupGroup getAdmin() { return admin; }
     public WhirrClouderaManager getManager() { return whirrCM; }
-
-    // and CDH Hosts ("workers")
-    DynamicCluster workerCluster = new DynamicCluster(admin, name: "CDH Nodes", 
-        initialSize: 4, 
-        factory: ClouderaCdhNode.newFactory().setConfig(ClouderaCdhNode.MANAGER, whirrCM));
-
-    AllServices services = new AllServices(this, name: "Cloudera Services");
     public AllServices getServices() { return services; }
+    
+    public void postConstruct() {
+        admin = addChild(getEntityManager().createEntity(BasicEntitySpec.newInstance(StartupGroup.class).
+            displayName("Cloudera Hosts and Admin")) );
+        whirrCM = admin.addChild(getEntityManager().createEntity(BasicEntitySpec.newInstance(WhirrClouderaManager.class)) );
+        workerCluster = admin.addChild(getEntityManager().createEntity(BasicEntitySpec.newInstance(DynamicCluster.class).
+            displayName("CDH Nodes").
+            configure("factory", ClouderaCdhNodeImpl.newFactory().setConfig(ClouderaCdhNode.MANAGER, whirrCM)).
+            configure("initialSize", 4)
+            ) );
+        services = addChild(getEntityManager().createEntity(BasicEntitySpec.newInstance(AllServices.class).
+            displayName("Cloudera Services") ));
+    }
 
     boolean launchDefaultServices = true;
     public void launchDefaultServices(boolean enabled) { launchDefaultServices = enabled; }    
@@ -125,16 +135,20 @@ public class SampleClouderaManagedCluster extends AbstractApplication {
         
     public static void main(String[] argv) {
         ArrayList args = new ArrayList(Arrays.asList(argv));
-        SampleClouderaManagedCluster app = new SampleClouderaManagedCluster(name:'Brooklyn Cloudera Managed Cluster');
+        SampleClouderaManagedClusterInterface app;
             
         try {
             def server = BrooklynLauncher.newLauncher().
-                managing(app).
                 webconsolePort(CommandLineUtil.getCommandLineOption(args, "--port", "8081+")).
                 launch();
                 
             List<Location> locations = server.getManagementContext().getLocationRegistry().resolve(args ?: [DEFAULT_LOCATION])
             
+            BasicEntitySpec<SampleClouderaManagedClusterInterface,?> appSpec = BasicEntitySpec.newInstance(SampleClouderaManagedClusterInterface.class).
+                displayName("Brooklyn Cloudera Managed Cluster");
+    
+            app = ApplicationBuilder.builder(appSpec).
+                manage(server.getManagementContext());
             app.launchDefaultServices(false);
             app.start(locations);
             

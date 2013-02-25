@@ -12,7 +12,7 @@ import brooklyn.entity.basic.EntityLocal;
 import brooklyn.entity.basic.lifecycle.CommonCommands;
 import brooklyn.event.basic.DependentConfiguration;
 import brooklyn.location.basic.SshMachineLocation;
-import brooklyn.location.basic.jclouds.JcloudsLocation.JcloudsSshMachineLocation;
+import brooklyn.location.jclouds.JcloudsSshMachineLocation;
 import brooklyn.util.ResourceUtils;
 
 import com.google.common.base.Preconditions;

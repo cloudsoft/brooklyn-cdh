@@ -21,6 +21,9 @@ import org.slf4j.LoggerFactory;
 
 import brooklyn.entity.Entity;
 import brooklyn.entity.basic.Entities;
+import brooklyn.entity.basic.EntityInternal;
+import brooklyn.entity.basic.EntityLocal;
+import brooklyn.entity.proxying.BasicEntitySpec;
 import brooklyn.util.MutableMap;
 import brooklyn.util.text.Identifiers;
 
@@ -187,7 +190,9 @@ public abstract class ServiceTemplate<T extends ServiceTemplate<?>> extends Abst
             name = this.name;
             flags2.put("name", name);
         }
-        ClouderaService result = new ClouderaService(flags2, owner);
+        ClouderaService result = ((EntityInternal)owner).getManagementSupport().getManagementContext(false).getEntityManager().
+                createEntity(BasicEntitySpec.newInstance(ClouderaService.class).
+                        configure(flags2));
         Entities.manage(result);
         result.create();
         try { 
