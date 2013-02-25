@@ -1,4 +1,3 @@
-
 package io.cloudsoft.cloudera.brooklynnodes;
 
 import static brooklyn.util.GroovyJavaMethods.elvis
@@ -57,8 +56,8 @@ public class ClouderaCdhNodeImpl extends SoftwareProcessImpl implements Cloudera
         mgdh.poll(SERVICE_UP, { it!=null });
     }
     
-    protected String getManagedHostId() {
-        def managedHosts = getConfig(MANAGER)?.getAttribute(WhirrClouderaManager.MANAGED_HOSTS);
+    public String getManagedHostId() {
+        def managedHosts = getConfig(MANAGER)?.getAttribute(ClouderaManagerNode.MANAGED_HOSTS);
         if (!managedHosts) return null;
         String hostname = getAttribute(HOSTNAME);
         if (hostname && managedHosts.contains(hostname)) return hostname;

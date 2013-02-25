@@ -1,7 +1,7 @@
 package io.cloudsoft.cloudera.builders;
 
+import io.cloudsoft.cloudera.brooklynnodes.ClouderaManagerNode;
 import io.cloudsoft.cloudera.brooklynnodes.ClouderaService;
-import io.cloudsoft.cloudera.brooklynnodes.WhirrClouderaManager;
 import io.cloudsoft.cloudera.rest.ClouderaRestCaller;
 import io.cloudsoft.cloudera.rest.RestDataObjects;
 import io.cloudsoft.cloudera.rest.RestDataObjects.ServiceRoleHostInfo;
@@ -22,7 +22,6 @@ import org.slf4j.LoggerFactory;
 import brooklyn.entity.Entity;
 import brooklyn.entity.basic.Entities;
 import brooklyn.entity.basic.EntityInternal;
-import brooklyn.entity.basic.EntityLocal;
 import brooklyn.entity.proxying.BasicEntitySpec;
 import brooklyn.util.MutableMap;
 import brooklyn.util.text.Identifiers;
@@ -36,7 +35,7 @@ public abstract class ServiceTemplate<T extends ServiceTemplate<?>> extends Abst
     private static final Logger log = LoggerFactory.getLogger(ServiceTemplate.class);
 
     protected String clusterName;
-    protected WhirrClouderaManager manager;
+    protected ClouderaManagerNode manager;
     protected Set<String> hostIds = new LinkedHashSet<String>();
     
     @SuppressWarnings("unchecked")
@@ -49,14 +48,14 @@ public abstract class ServiceTemplate<T extends ServiceTemplate<?>> extends Abst
     }
 
     @SuppressWarnings("unchecked")
-    public T manager(WhirrClouderaManager manager) {
+    public T manager(ClouderaManagerNode manager) {
         this.manager = manager;
         return (T)this;
     }
     @SuppressWarnings("unchecked")
     public T discoverHostsFromManager() {
         Preconditions.checkNotNull(manager, "manager must be specified before can discover hosts");
-        hosts(manager.getAttribute(WhirrClouderaManager.MANAGED_HOSTS));
+        hosts(manager.getAttribute(ClouderaManagerNode.MANAGED_HOSTS));
         return (T)this;
     }
 
@@ -193,6 +192,7 @@ public abstract class ServiceTemplate<T extends ServiceTemplate<?>> extends Abst
         ClouderaService result = ((EntityInternal)owner).getManagementSupport().getManagementContext(false).getEntityManager().
                 createEntity(BasicEntitySpec.newInstance(ClouderaService.class).
                         configure(flags2));
+        ((EntityInternal)owner).addChild(result);
         Entities.manage(result);
         result.create();
         try { 

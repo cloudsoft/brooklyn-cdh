@@ -2,26 +2,14 @@ package io.cloudsoft.cloudera.brooklynnodes;
 
 import io.cloudsoft.cloudera.builders.ServiceTemplate
 import io.cloudsoft.cloudera.rest.ClouderaRestCaller
-
-import java.util.concurrent.TimeUnit
-
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
-
-import brooklyn.config.render.RendererHints
 import brooklyn.entity.Entity
-import brooklyn.entity.basic.AbstractEntity
 import brooklyn.entity.basic.Attributes
 import brooklyn.entity.basic.Description
 import brooklyn.entity.basic.Lifecycle
-import brooklyn.entity.basic.NamedParameter
-import brooklyn.entity.proxying.ImplementedBy;
+import brooklyn.entity.proxying.ImplementedBy
 import brooklyn.entity.trait.Startable
-import brooklyn.event.adapter.FunctionSensorAdapter
-import brooklyn.event.adapter.SensorRegistry
 import brooklyn.event.basic.BasicAttributeSensor
 import brooklyn.event.basic.BasicConfigKey
-import brooklyn.location.Location
 import brooklyn.util.flags.SetFromFlag
 
 
@@ -29,8 +17,8 @@ import brooklyn.util.flags.SetFromFlag
 public interface ClouderaService extends Entity, Startable {
 
     @SetFromFlag(value="manager", nullable=false)
-    public static final BasicConfigKey<WhirrClouderaManager> MANAGER =
-        [WhirrClouderaManager.class, "cloudera.cdh.node.manager", "Cloudera Manager entity"];
+    public static final BasicConfigKey<ClouderaManagerNode> MANAGER =
+        [ClouderaManagerNode.class, "cloudera.cdh.node.manager", "Cloudera Manager entity"];
 
     @SetFromFlag(value="template", nullable=false)
     public static final BasicConfigKey<ServiceTemplate> TEMPLATE =

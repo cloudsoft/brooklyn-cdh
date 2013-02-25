@@ -21,8 +21,8 @@ import brooklyn.util.flags.SetFromFlag
 public interface ClouderaCdhNode extends SoftwareProcess {
 
     @SetFromFlag(value="manager", nullable=false)
-    public static final BasicConfigKey<WhirrClouderaManager> MANAGER =
-        [WhirrClouderaManager.class, "cloudera.cdh.node.manager", "Cloudera Manager entity"];
+    public static final BasicConfigKey<ClouderaManagerNode> MANAGER =
+        [ClouderaManagerNode.class, "cloudera.cdh.node.manager", "Cloudera Manager entity"];
 
     public static final BasicAttributeSensor<String> PRIVATE_HOSTNAME =
         [String, "whirr.cm.cdh.node.internal.hostname", "Hostname of this node as known on internal/private subnets"]
@@ -42,4 +42,7 @@ public interface ClouderaCdhNode extends SoftwareProcess {
     public String collectMetrics(@NamedParameter("targetDir") String targetDir);
 
     public ScriptHelper newScript(String summary);
+    
+    public String getManagedHostId();
+    
 }

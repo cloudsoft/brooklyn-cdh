@@ -34,7 +34,7 @@ public class ClouderaServiceImpl extends AbstractEntity implements ClouderaServi
     SensorRegistry sensorRegistry;
     
     ClouderaRestCaller getApi() {
-        return new ClouderaRestCaller(server: getConfig(MANAGER).getAttribute(WhirrClouderaManager.CLOUDERA_MANAGER_HOSTNAME), authName:"admin", authPass: "admin");
+        return new ClouderaRestCaller(server: getConfig(MANAGER).getAttribute(ClouderaManagerNode.CLOUDERA_MANAGER_HOSTNAME), authName:"admin", authPass: "admin");
     }
     
     public ClouderaServiceImpl(Map flags=[:], Entity owner=null) { super(flags, owner); }
