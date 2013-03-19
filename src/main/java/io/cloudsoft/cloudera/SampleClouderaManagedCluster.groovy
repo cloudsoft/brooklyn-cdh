@@ -149,7 +149,7 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
     
             app = ApplicationBuilder.builder(appSpec).
                 manage(server.getManagementContext());
-            app.launchDefaultServices(false);
+            app.launchDefaultServices(true);
             app.start(locations);
             
         } catch (Throwable t) {

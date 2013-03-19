@@ -7,6 +7,7 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import brooklyn.util.flags.FlagUtils
+import brooklyn.util.text.Identifiers;
 import brooklyn.util.text.Strings;
 
 public class RestDataObjects {
@@ -68,11 +69,24 @@ public class RestDataObjects {
     public static class ServiceRoleHostInfo extends Mappable {
         public static ServiceRoleHostInfo newInstance(String clusterName, Object roleType, String hostId) {
             return new ServiceRoleHostInfo(RestDataObjects.tidy(
-                // FIXME use smart shortener (cf jclouds location); cm server has max 63 chars
-                // format is eg. mapreduce_sample_jobtracker_domU_12_31_39_0E_C6_A3_compute_1_internal
-                (clusterName?clusterName+"-":"")+""+(""+roleType).toLowerCase()+"-"+
-                    hostId.substring(0, hostId.length()>16 ? 16 : hostId.length())+
-                (clusterName?"":"-"+Strings.makeRandomId(4))), ""+roleType, hostId);
+                Strings.shortener().separator("-").
+                    append( "cluster", clusterName).
+                    append( "role", (""+roleType).toLowerCase() ).
+                    append( "host", hostId ).
+                    append( "salt", Identifiers.makeRandomId(4) ).
+                    canTruncate( "host", 12 ).
+                    canTruncate( "role", 12 ).
+                    canTruncate( "cluster", 12 ).
+                    canTruncate( "host", 4 ).
+                    canTruncate( "cluster", 4 ).
+                    getStringOfMaxLength(56))
+//                // FIXME use smart shortener (cf jclouds location); cm server has max 63 chars
+//                // format is eg. mapreduce_sample_jobtracker_domU_12_31_39_0E_C6_A3_compute_1_internal
+//                (clusterName?clusterName+"-":"")+""+(""+roleType).toLowerCase()+"-"+
+//                    hostId.substring(0, hostId.length()>16 ? 16 : hostId.length())+
+//                (clusterName?"":"-"+Strings.makeRandomId(4))), 
+                ,
+                ""+roleType, hostId);
         }
         public ServiceRoleHostInfo(Object roleType, String hostId) {
             this(RestDataObjects.tidy((""+roleType).toLowerCase()+"_"+hostId), ""+roleType, hostId);
