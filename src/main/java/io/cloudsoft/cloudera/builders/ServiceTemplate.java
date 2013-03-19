@@ -189,7 +189,7 @@ public abstract class ServiceTemplate<T extends ServiceTemplate<?>> extends Abst
             name = this.name;
             flags2.put("name", name);
         }
-        ClouderaService result = ((EntityInternal)owner).getManagementSupport().getManagementContext(false).getEntityManager().
+        ClouderaService result = ((EntityInternal)owner).getManagementSupport().getManagementContext().getEntityManager().
                 createEntity(BasicEntitySpec.newInstance(ClouderaService.class).
                         configure(flags2));
         ((EntityInternal)owner).addChild(result);
