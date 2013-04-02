@@ -1,11 +1,11 @@
 package io.cloudsoft.cloudera;
 
-import java.util.Map;
-
-import groovy.transform.InheritConstructors
 import io.cloudsoft.cloudera.brooklynnodes.AllServices
 import io.cloudsoft.cloudera.brooklynnodes.ClouderaCdhNode
+import io.cloudsoft.cloudera.brooklynnodes.ClouderaCdhNodeImpl
+import io.cloudsoft.cloudera.brooklynnodes.ClouderaManagerNode
 import io.cloudsoft.cloudera.brooklynnodes.ClouderaService
+import io.cloudsoft.cloudera.brooklynnodes.DirectClouderaManager
 import io.cloudsoft.cloudera.brooklynnodes.StartupGroup
 import io.cloudsoft.cloudera.brooklynnodes.WhirrClouderaManager
 import io.cloudsoft.cloudera.builders.HBaseTemplate
@@ -21,8 +21,10 @@ import brooklyn.catalog.Catalog
 import brooklyn.enricher.basic.SensorPropagatingEnricher
 import brooklyn.entity.Entity
 import brooklyn.entity.basic.AbstractApplication
+import brooklyn.entity.basic.ApplicationBuilder
 import brooklyn.entity.basic.Entities
 import brooklyn.entity.group.DynamicCluster
+import brooklyn.entity.proxying.BasicEntitySpec
 import brooklyn.event.AttributeSensor
 import brooklyn.launcher.BrooklynLauncher
 import brooklyn.location.Location
@@ -31,11 +33,10 @@ import brooklyn.util.CommandLineUtil
 @Catalog(name="Cloudera CDH4", 
     description="Launches Cloudera Distribution for Hadoop Manager with a Cloudera Manager and an initial cluster of 4 CDH nodes (resizable) and default services including HDFS, MapReduce, and HBase",
     iconUrl="classpath://io/cloudsoft/cloudera/cloudera.jpg")
-public class SampleClouderaManagedCluster extends AbstractApplication {
+public class SampleClouderaManagedCluster extends AbstractApplication implements SampleClouderaManagedClusterInterface {
 
     static final Logger log = LoggerFactory.getLogger(SampleClouderaManagedCluster.class);
     static final String DEFAULT_LOCATION = "aws-ec2:us-east-1";
-    public static final AttributeSensor<String> CLOUDERA_MANAGER_URL = WhirrClouderaManager.CLOUDERA_MANAGER_URL;
         
     public SampleClouderaManagedCluster() {
         super();
@@ -48,26 +49,35 @@ public class SampleClouderaManagedCluster extends AbstractApplication {
     }
 
     // Admin - Cloudera Manager Node
-    public final Entity admin = new StartupGroup(this, name: "Cloudera Hosts and Admin");
-    public final WhirrClouderaManager whirrCM = new WhirrClouderaManager(admin);
+    protected Entity admin;
+    protected ClouderaManagerNode clouderaManagerNode;
+    protected DynamicCluster workerCluster;
+    protected AllServices services;
+    
     public StartupGroup getAdmin() { return admin; }
-    public WhirrClouderaManager getManager() { return whirrCM; }
-
-    // and CDH Hosts ("workers")
-    DynamicCluster workerCluster = new DynamicCluster(admin, name: "CDH Nodes", 
-        initialSize: 4, 
-        factory: ClouderaCdhNode.newFactory().setConfig(ClouderaCdhNode.MANAGER, whirrCM));
-
-    AllServices services = new AllServices(this, name: "Cloudera Services");
+    public ClouderaManagerNode getManager() { return clouderaManagerNode; }
     public AllServices getServices() { return services; }
+    
+    public void postConstruct() {
+        admin = addChild(getEntityManager().createEntity(BasicEntitySpec.newInstance(StartupGroup.class).
+            displayName("Cloudera Hosts and Admin")) );
+        clouderaManagerNode = admin.addChild(getEntityManager().createEntity(BasicEntitySpec.newInstance(
+//            WhirrClouderaManager.class
+            DirectClouderaManager.class
+            )) );
+        workerCluster = admin.addChild(getEntityManager().createEntity(BasicEntitySpec.newInstance(DynamicCluster.class).
+            displayName("CDH Nodes").
+            configure("factory", ClouderaCdhNodeImpl.newFactory().setConfig(ClouderaCdhNode.MANAGER, clouderaManagerNode)).
+            configure("initialSize", 4)
+            ) );
+        services = addChild(getEntityManager().createEntity(BasicEntitySpec.newInstance(AllServices.class).
+            displayName("Cloudera Services") ));
+        addEnricher(SensorPropagatingEnricher.newInstanceListeningTo(clouderaManagerNode, ClouderaManagerNode.CLOUDERA_MANAGER_URL));
+    }
 
     boolean launchDefaultServices = true;
     public void launchDefaultServices(boolean enabled) { launchDefaultServices = enabled; }    
 
-    {
-        addEnricher(SensorPropagatingEnricher.newInstanceListeningTo(whirrCM, WhirrClouderaManager.CLOUDERA_MANAGER_URL));
-    }
-    
     public void postStart(Collection<? extends Location> locations) {
         if (launchDefaultServices) {
             log.info("Application nodes started, now creating services");
@@ -80,31 +90,31 @@ public class SampleClouderaManagedCluster extends AbstractApplication {
         // following builds with sensible defaults, showing a few different syntaxes
         
         new HdfsTemplate().
-                manager(whirrCM).discoverHostsFromManager().
+                manager(clouderaManagerNode).discoverHostsFromManager().
                 assignRole(HdfsRoleType.NAMENODE).toAnyHost().
                 assignRole(HdfsRoleType.SECONDARYNAMENODE).toAnyHost().
                 assignRole(HdfsRoleType.DATANODE).toAllHosts().
                 formatNameNodes().
                 enableMetrics(isCertificationCluster).
-                buildWithEntity(services, manager: whirrCM);
+                buildWithEntity(services, manager: clouderaManagerNode);
             
         new MapReduceTemplate().
                 named("mapreduce-sample").
-                manager(whirrCM).discoverHostsFromManager().
+                manager(clouderaManagerNode).discoverHostsFromManager().
                 assignRoleJobTracker().toAnyHost().
                 assignRoleTaskTracker().toAllHosts().
                 enableMetrics(isCertificationCluster).
                 buildWithEntity(services);
 
         ClouderaService zk = new ZookeeperTemplate().
-                manager(whirrCM).discoverHostsFromManager().
+                manager(clouderaManagerNode).discoverHostsFromManager().
                 assignRoleServer().toAnyHost().
                 buildWithEntity(services);
 
         ClouderaService hb = null;
         if (includeHbase) {
             hb = new HBaseTemplate().
-                manager(whirrCM).discoverHostsFromManager().
+                manager(clouderaManagerNode).discoverHostsFromManager().
                 assignRoleMaster().toAnyHost().
                 assignRoleRegionServer().toAllHosts().
                 buildWithEntity(services);
@@ -117,7 +127,7 @@ public class SampleClouderaManagedCluster extends AbstractApplication {
             log.info("Restarting HBase after Zookeeper restart");
             hb.restart();
         }
-        log.info("CDH services now online -- "+whirrCM.getAttribute(WhirrClouderaManager.CLOUDERA_MANAGER_URL));
+        log.info("CDH services now online -- "+clouderaManagerNode.getAttribute(ClouderaManagerNode.CLOUDERA_MANAGER_URL));
     }
     
     // can be started in usual Java way, or (bypassing method below)
@@ -125,17 +135,21 @@ public class SampleClouderaManagedCluster extends AbstractApplication {
         
     public static void main(String[] argv) {
         ArrayList args = new ArrayList(Arrays.asList(argv));
-        SampleClouderaManagedCluster app = new SampleClouderaManagedCluster(name:'Brooklyn Cloudera Managed Cluster');
+        SampleClouderaManagedClusterInterface app;
             
         try {
             def server = BrooklynLauncher.newLauncher().
-                managing(app).
                 webconsolePort(CommandLineUtil.getCommandLineOption(args, "--port", "8081+")).
                 launch();
                 
             List<Location> locations = server.getManagementContext().getLocationRegistry().resolve(args ?: [DEFAULT_LOCATION])
             
-            app.launchDefaultServices(false);
+            BasicEntitySpec<SampleClouderaManagedClusterInterface,?> appSpec = BasicEntitySpec.newInstance(SampleClouderaManagedClusterInterface.class).
+                displayName("Brooklyn Cloudera Managed Cluster");
+    
+            app = ApplicationBuilder.builder(appSpec).
+                manage(server.getManagementContext());
+            app.launchDefaultServices(true);
             app.start(locations);
             
         } catch (Throwable t) {
