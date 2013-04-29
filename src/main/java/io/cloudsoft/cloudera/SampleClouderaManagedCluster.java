@@ -1,5 +1,6 @@
 package io.cloudsoft.cloudera;
 
+import static com.google.common.collect.Iterables.getOnlyElement;
 import io.cloudsoft.cloudera.brooklynnodes.AllServices;
 import io.cloudsoft.cloudera.brooklynnodes.ClouderaCdhNode;
 import io.cloudsoft.cloudera.brooklynnodes.ClouderaCdhNodeImpl;
@@ -15,7 +16,6 @@ import io.cloudsoft.cloudera.rest.RestDataObjects.HdfsRoleType;
 
 import java.util.List;
 
-import org.jclouds.compute.config.ComputeServiceProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -73,7 +73,7 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
                                 "factory",
                                 ClouderaCdhNodeImpl.newFactory()
                                         .setConfig(ClouderaCdhNode.MANAGER, clouderaManagerNode))
-                        .configure("initialSize", 4)));
+                        .configure("initialSize", 3)));
 
         services = (AllServices) addChild(getEntityManager().createEntity(
                 BasicEntitySpec.newInstance(AllServices.class).displayName("Cloudera Services")));
@@ -98,7 +98,7 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
                 assignRole(HdfsRoleType.DATANODE).toAllHosts().
                 formatNameNodes().
                 enableMetrics(isCertificationCluster).
-                buildWithEntity(clouderaManagerNode);
+                buildWithEntity(services);
             
         new MapReduceTemplate().
                 named("mapreduce-sample").
@@ -148,6 +148,9 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
                                                     .location(location)
                                                     .start();
         Entities.dumpInfo(launcher.getApplications());
-    }
+        SampleClouderaManagedClusterInterface app = 
+                (SampleClouderaManagedClusterInterface) getOnlyElement(launcher.getApplications());
+        app.startServices(true, false);
+        }
 
 }

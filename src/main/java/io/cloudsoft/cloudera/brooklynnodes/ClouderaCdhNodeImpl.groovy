@@ -37,6 +37,10 @@ public class ClouderaCdhNodeImpl extends SoftwareProcessImpl implements Cloudera
             osFamily(OsFamily.UBUNTU).osVersionMatches("12.04").
             os64Bit(true).
             minRam(2560);
+        if(System.getProperty("securitygroup") != null) {
+            flags.remove("inboundPorts");
+            flags.put("securityGroups", System.getProperty("securitygroup"));
+        }
         return flags;
     }
 

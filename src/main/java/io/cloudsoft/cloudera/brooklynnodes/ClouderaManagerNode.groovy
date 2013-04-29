@@ -8,6 +8,8 @@ import brooklyn.entity.trait.Startable
 import brooklyn.event.AttributeSensor
 import brooklyn.event.basic.BasicAttributeSensor
 import brooklyn.event.basic.BasicConfigKey
+import brooklyn.event.basic.PortAttributeSensorAndConfigKey;
+import brooklyn.location.basic.PortRanges;
 import brooklyn.util.flags.SetFromFlag
 
 
@@ -29,7 +31,7 @@ public interface ClouderaManagerNode extends Entity {
         [List, "cloudera.manager.hosts", "List of hosts managed by this CM instance"]
 
     public static final BasicAttributeSensor<List> MANAGED_CLUSTERS =
-        [List, "clouder.manager.clusters", "List of clusters managed by this CM instance"]
+        [List, "cloudera.manager.clusters", "List of clusters managed by this CM instance"]
 
     public ClouderaCdhNode findEntityForHostId(String hostId);
     

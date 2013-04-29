@@ -29,6 +29,9 @@ import brooklyn.event.feed.function.FunctionFeed;
 import brooklyn.event.feed.function.FunctionPollConfig;
 import brooklyn.location.Location;
 import brooklyn.location.MachineProvisioningLocation;
+import brooklyn.location.PortRange;
+import brooklyn.location.basic.PortRanges;
+import brooklyn.location.basic.PortRanges.AggregatePortRange;
 import brooklyn.location.jclouds.JcloudsLocation;
 import brooklyn.location.jclouds.JcloudsLocationConfig;
 import brooklyn.location.jclouds.JcloudsSshMachineLocation;
@@ -54,7 +57,7 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
 
     protected Collection<Integer> getRequiredOpenPorts() {
         return MutableSet.<Integer>builder().addAll(super.getRequiredOpenPorts()).
-                addAll(Arrays.asList(22, 2181, 7180, 7182, 8088, 8888, 50030, 50060, 50070, 50090, 60010, 60020, 60030)).
+                //addAll(Arrays.asList(22, 2181, 7180, 7182, 8088, 8888, 50030, 50060, 50070, 50090, 60010, 60020, 60030)).
                 build();
     }
     
@@ -64,6 +67,10 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
             osFamily(OsFamily.UBUNTU).osVersionMatches("12.04").
             os64Bit(true).
             minRam(2560));
+        if(System.getProperty("securitygroup") != null) {
+            flags.remove("inboundPorts");
+            flags.put("securityGroups", System.getProperty("securitygroup"));
+        }
         return flags;
     }
     
