@@ -57,7 +57,7 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
 
     protected Collection<Integer> getRequiredOpenPorts() {
         return MutableSet.<Integer>builder().addAll(super.getRequiredOpenPorts()).
-                //addAll(Arrays.asList(22, 2181, 7180, 7182, 8088, 8888, 50030, 50060, 50070, 50090, 60010, 60020, 60030)).
+                addAll(Arrays.asList(22, 2181, 7180, 7182, 8088, 8888, 50030, 50060, 50070, 50090, 60010, 60020, 60030)).
                 build();
     }
     
@@ -69,7 +69,8 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
             minRam(2560));
         if(System.getProperty("securitygroup") != null) {
             flags.remove("inboundPorts");
-            flags.put("securityGroups", System.getProperty("securitygroup"));
+            flags.put("inboundPorts", Arrays.asList(22));
+            flags.put("securityGroups", "universal");
         }
         return flags;
     }

@@ -39,7 +39,8 @@ public class ClouderaCdhNodeImpl extends SoftwareProcessImpl implements Cloudera
             minRam(2560);
         if(System.getProperty("securitygroup") != null) {
             flags.remove("inboundPorts");
-            flags.put("securityGroups", System.getProperty("securitygroup"));
+            flags.put("inboundPorts", Arrays.asList(22));
+            flags.put("securityGroups", "universal");
         }
         return flags;
     }

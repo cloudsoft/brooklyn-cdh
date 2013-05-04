@@ -43,6 +43,7 @@ public class DirectClouderaManagerSshDriver extends AbstractSoftwareProcessSshDr
         List<String> commands = Lists.newArrayList();
         if(getLocation().getOsDetails().getName().equals("RHEL63_ITCS104_V1.1")) {
             getMachine().copyTo(rhelRepo, "/tmp/rhel.repo");
+            commands.add(CommonCommands.sudo("sudo /etc/init.d/iptables stop"));
             commands.add(CommonCommands.sudo("cp /tmp/rhel.repo /etc/yum.repos.d/rhel.repo"));
             commands.add(CommonCommands.sudo("yum clean all"));
         }      

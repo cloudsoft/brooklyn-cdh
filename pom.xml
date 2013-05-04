@@ -14,7 +14,7 @@
 
         <groovy.version>1.8.6</groovy.version>
         <testng.version>6.3.1</testng.version>
-        <brooklyn.version>0.5.0-rc.1</brooklyn.version>
+        <brooklyn.version>0.5.0-rc.2</brooklyn.version>
         <cloudera-whirr-cdh.version>0.8.0-cdh4.2.1</cloudera-whirr-cdh.version>
     </properties>
 
@@ -34,6 +34,32 @@
             <groupId>com.cloudera.whirr</groupId>
             <artifactId>whirr-cm</artifactId>
             <version>${cloudera-whirr-cdh.version}</version>
+            <exclusions>
+              <exclusion>
+                <groupId>org.jclouds</groupId>
+                <artifactId>jclouds-allblobstore</artifactId>
+              </exclusion> 
+              <exclusion>
+                <groupId>org.jclouds</groupId>
+                <artifactId>jclouds-compute</artifactId>
+              </exclusion>
+              <exclusion>
+                <groupId>org.jclouds</groupId>
+                <artifactId>jclouds-scriptbuilder</artifactId>
+              </exclusion> 
+              <exclusion>
+                <groupId>org.jclouds.api</groupId>
+                <artifactId>byon</artifactId>
+              </exclusion>
+              <exclusion>
+                <groupId>org.jclouds.driver</groupId>
+                <artifactId>jclouds-joda</artifactId>
+              </exclusion>
+              <exclusion>
+                <groupId>org.jclouds.driver</groupId>
+                <artifactId>jclouds-netty</artifactId>
+              </exclusion>             
+            </exclusions>
         </dependency>
         <dependency>
             <!-- web testing -->

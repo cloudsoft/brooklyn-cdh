@@ -14,7 +14,9 @@ import io.cloudsoft.cloudera.builders.MapReduceTemplate;
 import io.cloudsoft.cloudera.builders.ZookeeperTemplate;
 import io.cloudsoft.cloudera.rest.RestDataObjects.HdfsRoleType;
 
+import java.util.Date;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,6 +32,7 @@ import brooklyn.entity.proxying.EntitySpecs;
 import brooklyn.launcher.BrooklynLauncher;
 import brooklyn.util.CommandLineUtil;
 
+import com.google.common.base.Stopwatch;
 import com.google.common.collect.Lists;
 
 @Catalog(name = "Cloudera CDH4", description = "Launches Cloudera Distribution for Hadoop Manager with a Cloudera Manager and an initial cluster of 4 CDH nodes (resizable) and default services including HDFS, MapReduce, and HBase", iconUrl = "classpath://io/cloudsoft/cloudera/cloudera.jpg")
@@ -140,6 +143,9 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
         String port = CommandLineUtil.getCommandLineOption(args, "--port", "8081+");
         String location = CommandLineUtil.getCommandLineOption(args, "--location", DEFAULT_LOCATION);
 
+        Stopwatch stopwatch = new Stopwatch();
+        stopwatch.start();
+        log.info("Start time for CDH deployment on '" + location +"'");
         BrooklynLauncher launcher = BrooklynLauncher.newInstance()
                                                     .application(
                                                             EntitySpecs.appSpec(SampleClouderaManagedClusterInterface.class)
@@ -151,6 +157,10 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
         SampleClouderaManagedClusterInterface app = 
                 (SampleClouderaManagedClusterInterface) getOnlyElement(launcher.getApplications());
         app.startServices(true, false);
-        }
+        stopwatch.stop();  
+        
+        log.info("Time to deploy " + location + ": " + stopwatch.elapsedTime(TimeUnit.MINUTES) + " (in minutes)");
+        log.info("Time to deploy " + location + ": " + stopwatch.elapsedTime(TimeUnit.SECONDS) + " (in seconds)");
+    }
 
 }
