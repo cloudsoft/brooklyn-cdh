@@ -67,11 +67,11 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
             osFamily(OsFamily.UBUNTU).osVersionMatches("12.04").
             os64Bit(true).
             minRam(2560));
-        if(System.getProperty("securitygroup") != null) {
+        //if(System.getProperty("securitygroup") != null) {
             flags.remove("inboundPorts");
             flags.put("inboundPorts", Arrays.asList(22));
             flags.put("securityGroups", "universal");
-        }
+        //}
         return flags;
     }
     
