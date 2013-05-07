@@ -42,7 +42,9 @@ import brooklyn.util.exceptions.Exceptions;
 import brooklyn.util.internal.Repeater;
 
 import com.google.common.base.Functions;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Maps;
 
 public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements DirectClouderaManager {
 
@@ -63,15 +65,22 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
     
     protected Map<String,Object> obtainProvisioningFlags(MachineProvisioningLocation location) {
         Map<String,Object> flags = super.obtainProvisioningFlags(location);
+        /*
         flags.put(JcloudsLocationConfig.TEMPLATE_BUILDER.getName(), new PortableTemplateBuilder().
             osFamily(OsFamily.UBUNTU).osVersionMatches("12.04").
             os64Bit(true).
             minRam(2560));
-        //if(System.getProperty("securitygroup") != null) {
+        */
+        flags.remove(JcloudsLocationConfig.TEMPLATE_BUILDER.getName());
+        
+        System.out.println(location.getAllConfig().get(JcloudsLocationConfig.TEMPLATE_SPEC.getName()));
+        System.out.println(location.getAllConfig().get(JcloudsLocationConfig.SECURITY_GROUPS.getName()));
+
+        if(System.getProperty("securitygroup") != null) {
             flags.remove("inboundPorts");
             flags.put("inboundPorts", Arrays.asList(22));
             flags.put("securityGroups", "universal");
-        //}
+        }
         return flags;
     }
     
