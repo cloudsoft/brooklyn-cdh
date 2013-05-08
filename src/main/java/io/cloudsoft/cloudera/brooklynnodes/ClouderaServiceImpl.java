@@ -1,24 +1,26 @@
 package io.cloudsoft.cloudera.brooklynnodes;
 
-import io.cloudsoft.cloudera.rest.ClouderaRestCaller
+import io.cloudsoft.cloudera.rest.ClouderaRestCaller;
 
-import java.util.concurrent.Callable
-import java.util.concurrent.TimeUnit
+import java.util.Collection;
+import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
 
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import brooklyn.config.render.RendererHints
-import brooklyn.entity.Entity
-import brooklyn.entity.basic.AbstractEntity
-import brooklyn.entity.basic.Description
-import brooklyn.entity.basic.Lifecycle
-import brooklyn.entity.basic.NamedParameter
-import brooklyn.event.feed.function.FunctionFeed
-import brooklyn.event.feed.function.FunctionPollConfig
-import brooklyn.location.Location
+import brooklyn.config.render.RendererHints;
+import brooklyn.entity.basic.AbstractEntity;
+import brooklyn.entity.basic.Description;
+import brooklyn.entity.basic.Lifecycle;
+import brooklyn.entity.basic.NamedParameter;
+import brooklyn.event.feed.function.FunctionFeed;
+import brooklyn.event.feed.function.FunctionPollConfig;
+import brooklyn.location.Location;
 
-import com.google.common.base.Functions
+import com.google.common.base.Functions;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 
 public class ClouderaServiceImpl extends AbstractEntity implements ClouderaService {
 
@@ -28,12 +30,9 @@ public class ClouderaServiceImpl extends AbstractEntity implements ClouderaServi
         RendererHints.register(ClouderaService.SERVICE_URL, new RendererHints.NamedActionWithUrl("Open"));
     }
 
-    ClouderaRestCaller getApi() {
-        return new ClouderaRestCaller(server: getConfig(MANAGER).getAttribute(ClouderaManagerNode.CLOUDERA_MANAGER_HOSTNAME), authName:"admin", authPass: "admin");
+    public ClouderaRestCaller getApi() {
+        return ClouderaRestCaller.newInstance(getConfig(MANAGER).getAttribute(ClouderaManagerNode.CLOUDERA_MANAGER_HOSTNAME), "admin", "admin");
     }
-    
-    public ClouderaServiceImpl(Map flags=[:], Entity owner=null) { super(flags, owner); }
-    public ClouderaServiceImpl(Entity owner) { this([:], owner); }
 
     public void create() {
         if (getAttribute(SERVICE_STATE)!=null) {
@@ -73,7 +72,7 @@ public class ClouderaServiceImpl extends AbstractEntity implements ClouderaServi
                         @Override
                         public Boolean call() throws Exception {
                             try {
-                                return (it.getServices(getClusterName()).contains(getServiceName()));
+                                return (getApi().getServices(getClusterName()).contains(getServiceName()));
                             }
                             catch (Exception e) {
                                 return false;
@@ -82,25 +81,33 @@ public class ClouderaServiceImpl extends AbstractEntity implements ClouderaServi
                     })
                     .onError(Functions.constant(false))
                     )
-                .poll(new FunctionPollConfig<List,List>(HOSTS)
+                .poll(new FunctionPollConfig<Collection<String>, Collection<String>>(HOSTS)
                 .period(30, TimeUnit.SECONDS)
-                .callable(new Callable<List>() {
+                .callable(new Callable<Collection<String>>() {
                     @Override
-                    public List call() throws Exception {
-                        return it.items.collect { it.hostRef.hostId };
+                    public Collection<String> call() throws Exception {
+                        for(Object element : ((Iterable<Object>) getApi().getServiceRolesJson(getClusterName(), getServiceName()))) {
+                            System.out.println(element.getClass());
+                            //return it.items.collect { it.hostRef.hostId };
+                        }
+                        return Lists.newArrayList();
                     }
                 })
-                .onError(Functions.constant(false))
+                //.onError(Functions.constant(false))
                 )
-                .poll(new FunctionPollConfig<List,List>(ROLES)
+                .poll(new FunctionPollConfig<Collection<String>, Collection<String>>(ROLES)
                     .period(30, TimeUnit.SECONDS)
-                    .callable(new Callable<Set>() {
+                    .callable(new Callable<Collection<String>>() {
                         @Override
-                        public Set call() throws Exception {
-                            return (it.items.collect { it.type }) as Set;
+                        public Collection<String> call() throws Exception {
+                            for(Object element : ((Iterable<Object>) getApi().getServiceRolesJson(getClusterName(), getServiceName()))) {
+                                System.out.println(element.getClass());
+                                //return (it.items.collect { it.type }) as Set;
+                            }
+                            return Sets.newHashSet();
                         }
                     })
-                    .onError(Functions.constant(false))
+                    //.onError(Functions.constant(false))
                     )
                 .poll(new FunctionPollConfig<Boolean,Boolean>(SERVICE_UP)
                     .period(30, TimeUnit.SECONDS)
@@ -108,7 +115,9 @@ public class ClouderaServiceImpl extends AbstractEntity implements ClouderaServi
                         @Override
                         public Boolean call() throws Exception {
                             try {
-                                return (it.serviceState == "STARTED");
+                                Object serviceJson = getApi().getServiceJson(getClusterName(), getServiceName());
+                                return serviceJson != null;
+                                //return (it.serviceState == "STARTED");
                             }
                             catch (Exception e) {
                                 return false;
@@ -117,25 +126,29 @@ public class ClouderaServiceImpl extends AbstractEntity implements ClouderaServi
                     })
                     .onError(Functions.constant(false))
                     )
-                .poll(new FunctionPollConfig<List,List>(SERVICE_HEALTH)
+                .poll(new FunctionPollConfig<String, String>(SERVICE_HEALTH)
                     .period(30, TimeUnit.SECONDS)
                     .callable(new Callable<String>() {
                         @Override
                         public String call() throws Exception {
-                            return it.healthSummary;
+                            Object serviceJson = getApi().getServiceJson(getClusterName(), getServiceName());
+                            return (String) serviceJson;
+                            //return it.healthSummary;
                         }
                     })
-                    .onError(Functions.constant(false))
+                    //.onError(Functions.constant(false))
                     )
-                .poll(new FunctionPollConfig<List,List>(SERVICE_URL)
+                .poll(new FunctionPollConfig<String, String>(SERVICE_URL)
                     .period(30, TimeUnit.SECONDS)
                     .callable(new Callable<String>() {
                         @Override
                         public String call() throws Exception {
-                            return it.serviceUrl;
+                            Object serviceJson = getApi().getServiceJson(getClusterName(), getServiceName());
+                            return (String) serviceJson;
+                            //return it.serviceUrl;
                         }
                     })
-                    .onError(Functions.constant(false))
+                   // .onError(Functions.constant(false))
                     )
                 .build();
     }
@@ -143,18 +156,10 @@ public class ClouderaServiceImpl extends AbstractEntity implements ClouderaServi
     String getClusterName() { return getAttribute(CLUSTER_NAME); }
     String getServiceName() { return getAttribute(SERVICE_NAME); }
     
-    void invokeServiceCommand(String cmd) {
-        Object result = getApi().invokeServiceCommand(clusterName, serviceName, cmd).block(5*60*1000);
-        if (!result) {
-            setAttribute(SERVICE_STATE, Lifecycle.ON_FIRE);
-            throw new IllegalStateException("The service failed to ${cmd}.");
-        }
-    }
-
     @Override
     @Description("Start the process/service represented by an entity")
-    void start(@NamedParameter("locations") Collection<? extends Location> locations) {
-        if (locations) log.debug("Ignoring locations at ${this}");
+    public void start(@NamedParameter("locations") Collection<? extends Location> locations) {
+        if (locations == null) log.debug("Ignoring locations at ${this}");
         if (getAttribute(SERVICE_STATE)==Lifecycle.RUNNING) {
             log.debug("Ignoring start when already started at ${this}");
             return;
@@ -167,7 +172,7 @@ public class ClouderaServiceImpl extends AbstractEntity implements ClouderaServi
     
     @Override
     @Description("Stop the process/service represented by an entity")
-    void stop() {
+    public void stop() {
         if (getAttribute(SERVICE_STATE)==Lifecycle.STOPPED) {
             log.debug("Ignoring stop when already stopped at ${this}");
             return;
@@ -179,7 +184,7 @@ public class ClouderaServiceImpl extends AbstractEntity implements ClouderaServi
 
     @Override
     @Description("Restart the process/service represented by an entity")
-    void restart() {
+    public void restart() {
         setAttribute(SERVICE_STATE, Lifecycle.STARTING);
         invokeServiceCommand("restart");
         setAttribute(SERVICE_STATE, Lifecycle.RUNNING);
