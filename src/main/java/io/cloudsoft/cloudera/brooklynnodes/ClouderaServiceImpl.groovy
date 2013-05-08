@@ -1,8 +1,8 @@
 package io.cloudsoft.cloudera.brooklynnodes;
 
-import io.cloudsoft.cloudera.builders.ServiceTemplate
 import io.cloudsoft.cloudera.rest.ClouderaRestCaller
 
+import java.util.concurrent.Callable
 import java.util.concurrent.TimeUnit
 
 import org.slf4j.Logger
@@ -11,17 +11,14 @@ import org.slf4j.LoggerFactory
 import brooklyn.config.render.RendererHints
 import brooklyn.entity.Entity
 import brooklyn.entity.basic.AbstractEntity
-import brooklyn.entity.basic.Attributes
 import brooklyn.entity.basic.Description
 import brooklyn.entity.basic.Lifecycle
 import brooklyn.entity.basic.NamedParameter
-import brooklyn.entity.trait.Startable
-import brooklyn.event.adapter.FunctionSensorAdapter
-import brooklyn.event.adapter.SensorRegistry
-import brooklyn.event.basic.BasicAttributeSensor
-import brooklyn.event.basic.BasicConfigKey
+import brooklyn.event.feed.function.FunctionFeed
+import brooklyn.event.feed.function.FunctionPollConfig
 import brooklyn.location.Location
-import brooklyn.util.flags.SetFromFlag
+
+import com.google.common.base.Functions
 
 public class ClouderaServiceImpl extends AbstractEntity implements ClouderaService {
 
@@ -31,8 +28,6 @@ public class ClouderaServiceImpl extends AbstractEntity implements ClouderaServi
         RendererHints.register(ClouderaService.SERVICE_URL, new RendererHints.NamedActionWithUrl("Open"));
     }
 
-    SensorRegistry sensorRegistry;
-    
     ClouderaRestCaller getApi() {
         return new ClouderaRestCaller(server: getConfig(MANAGER).getAttribute(ClouderaManagerNode.CLOUDERA_MANAGER_HOSTNAME), authName:"admin", authPass: "admin");
     }
@@ -57,8 +52,8 @@ public class ClouderaServiceImpl extends AbstractEntity implements ClouderaServi
     }
     
     protected void connectSensors() {
+        /*
         if (!sensorRegistry) sensorRegistry = new SensorRegistry(this);
-        
         FunctionSensorAdapter fnSensorAdaptor = sensorRegistry.register(new FunctionSensorAdapter({ getApi() }, period: 30*TimeUnit.SECONDS));
         fnSensorAdaptor.poll(SERVICE_REGISTERED, { it.getServices(getClusterName()).contains(getServiceName()) });
         def roles = fnSensorAdaptor.then({ it.getServiceRolesJson(getClusterName(), getServiceName()) });
@@ -68,8 +63,81 @@ public class ClouderaServiceImpl extends AbstractEntity implements ClouderaServi
         state.poll(SERVICE_UP, { it.serviceState == "STARTED" });
         state.poll(SERVICE_HEALTH, { it.healthSummary });
         state.poll(SERVICE_URL, { it.serviceUrl });
-        
         sensorRegistry.activateAdapters();
+        */
+        FunctionFeed feed = FunctionFeed.builder()
+                .entity(this)
+                .poll(new FunctionPollConfig<Boolean,Boolean>(SERVICE_REGISTERED)
+                    .period(30, TimeUnit.SECONDS)
+                    .callable(new Callable<Boolean>() {
+                        @Override
+                        public Boolean call() throws Exception {
+                            try {
+                                return (it.getServices(getClusterName()).contains(getServiceName()));
+                            }
+                            catch (Exception e) {
+                                return false;
+                            }
+                        }
+                    })
+                    .onError(Functions.constant(false))
+                    )
+                .poll(new FunctionPollConfig<List,List>(HOSTS)
+                .period(30, TimeUnit.SECONDS)
+                .callable(new Callable<List>() {
+                    @Override
+                    public List call() throws Exception {
+                        return it.items.collect { it.hostRef.hostId };
+                    }
+                })
+                .onError(Functions.constant(false))
+                )
+                .poll(new FunctionPollConfig<List,List>(ROLES)
+                    .period(30, TimeUnit.SECONDS)
+                    .callable(new Callable<Set>() {
+                        @Override
+                        public Set call() throws Exception {
+                            return (it.items.collect { it.type }) as Set;
+                        }
+                    })
+                    .onError(Functions.constant(false))
+                    )
+                .poll(new FunctionPollConfig<Boolean,Boolean>(SERVICE_UP)
+                    .period(30, TimeUnit.SECONDS)
+                    .callable(new Callable<Boolean>() {
+                        @Override
+                        public Boolean call() throws Exception {
+                            try {
+                                return (it.serviceState == "STARTED");
+                            }
+                            catch (Exception e) {
+                                return false;
+                            }
+                        }
+                    })
+                    .onError(Functions.constant(false))
+                    )
+                .poll(new FunctionPollConfig<List,List>(SERVICE_HEALTH)
+                    .period(30, TimeUnit.SECONDS)
+                    .callable(new Callable<String>() {
+                        @Override
+                        public String call() throws Exception {
+                            return it.healthSummary;
+                        }
+                    })
+                    .onError(Functions.constant(false))
+                    )
+                .poll(new FunctionPollConfig<List,List>(SERVICE_URL)
+                    .period(30, TimeUnit.SECONDS)
+                    .callable(new Callable<String>() {
+                        @Override
+                        public String call() throws Exception {
+                            return it.serviceUrl;
+                        }
+                    })
+                    .onError(Functions.constant(false))
+                    )
+                .build();
     }
     
     String getClusterName() { return getAttribute(CLUSTER_NAME); }

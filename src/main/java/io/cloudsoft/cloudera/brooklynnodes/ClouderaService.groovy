@@ -1,4 +1,4 @@
-package io.cloudsoft.cloudera.brooklynnodes;
+package io.cloudsoft.cloudera.brooklynnodes
 
 import io.cloudsoft.cloudera.builders.ServiceTemplate
 import io.cloudsoft.cloudera.rest.ClouderaRestCaller

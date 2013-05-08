@@ -39,7 +39,7 @@ public class StartupGroupImpl extends AbstractEntity implements StartupGroup {
     /** variant of start which allows some failures */
     public static void startWithEnough(Entity e, Collection<? extends Location> locations, int minCount, double minPercent) {
         log.info("Starting entity "+e+" at "+locations);
-        Iterable<Entity> startables = Iterables.filter(e.getOwnedChildren(), Predicates.instanceOf(Startable.class));
+        Iterable<Entity> startables = Iterables.filter(e.getChildren(), Predicates.instanceOf(Startable.class));
 
         Throwable error = null;
         if (!Iterables.isEmpty(startables) && truth(locations) && !locations.isEmpty()) {
