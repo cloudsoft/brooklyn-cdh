@@ -66,6 +66,7 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
             osFamily(OsFamily.UBUNTU).osVersionMatches("12.04").
             os64Bit(true).
             minRam(2560));
+        flags.put(JcloudsLocationConfig.SECURITY_GROUPS.getName(), "universal");
         return flags;
     }
     
@@ -236,15 +237,14 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
         }
         if (jcl!=null) {
             ComputeServiceContext ctx = jcl.getComputeService().getContext();
-            if (ctx.getProviderSpecificContext().getApi() instanceof EC2Client) {
+            if (ctx.unwrap() instanceof EC2Client) {
                 // This code (or something like it) may be added to jclouds (see
                 // http://code.google.com/p/jclouds/issues/detail?id=336).
                 // Until then we need this temporary workaround.
 //                String region = AWSUtils.parseHandle(Iterables.get(instances, 0).getId())[0];
                 try {
                     String region = jcl.getRegion();
-                    EC2Client ec2Client = EC2Client.class.cast(
-                            ctx.getProviderSpecificContext().getApi());
+                    EC2Client ec2Client = EC2Client.class.cast(ctx.unwrap());
                     String id = jclssh.getNode().getId();
                     // string region prefix from id
                     if (id.indexOf('/')>=0) id = id.substring(id.indexOf('/')+1);

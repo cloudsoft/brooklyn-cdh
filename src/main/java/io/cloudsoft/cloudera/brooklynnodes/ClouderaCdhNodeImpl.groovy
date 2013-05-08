@@ -3,11 +3,13 @@ package io.cloudsoft.cloudera.brooklynnodes;
 import static brooklyn.util.GroovyJavaMethods.elvis
 import groovy.transform.InheritConstructors
 
+import java.util.concurrent.Callable
 import java.util.concurrent.TimeUnit
 
 import org.jclouds.compute.domain.OsFamily
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
 
 import brooklyn.entity.basic.BasicConfigurableEntityFactory
 import brooklyn.entity.basic.ConfigurableEntityFactory
@@ -15,10 +17,13 @@ import brooklyn.entity.basic.Description
 import brooklyn.entity.basic.NamedParameter
 import brooklyn.entity.basic.SoftwareProcessImpl
 import brooklyn.entity.basic.lifecycle.ScriptHelper
-import brooklyn.event.adapter.FunctionSensorAdapter
+import brooklyn.event.feed.function.FunctionFeed
+import brooklyn.event.feed.function.FunctionPollConfig
 import brooklyn.location.MachineProvisioningLocation
+import brooklyn.location.jclouds.JcloudsLocationConfig;
 import brooklyn.location.jclouds.templates.PortableTemplateBuilder
 
+import com.google.common.base.Functions
 
 @InheritConstructors
 public class ClouderaCdhNodeImpl extends SoftwareProcessImpl implements ClouderaCdhNode {
@@ -37,6 +42,7 @@ public class ClouderaCdhNodeImpl extends SoftwareProcessImpl implements Cloudera
             osFamily(OsFamily.UBUNTU).osVersionMatches("12.04").
             os64Bit(true).
             minRam(2560);
+        flags.put(JcloudsLocationConfig.SECURITY_GROUPS.getName(), "universal");
         return flags;
     }
 
@@ -49,11 +55,37 @@ public class ClouderaCdhNodeImpl extends SoftwareProcessImpl implements Cloudera
     
     public void connectSensors() {
         super.connectSensors();
-        
-        FunctionSensorAdapter fnSensorAdaptor = sensorRegistry.register(new FunctionSensorAdapter({}, period: 30*TimeUnit.SECONDS));
-        def mgdh = fnSensorAdaptor.then { getManagedHostId() };
-        mgdh.poll(CDH_HOST_ID);
-        mgdh.poll(SERVICE_UP, { it!=null });
+        /*
+         FunctionSensorAdapter fnSensorAdaptor = sensorRegistry.register(new FunctionSensorAdapter({}, period: 30*TimeUnit.SECONDS));
+         def mgdh = fnSensorAdaptor.then { getManagedHostId() };
+         mgdh.poll(CDH_HOST_ID);
+         mgdh.poll(SERVICE_UP, { it!=null });
+         */
+
+        FunctionFeed feed = FunctionFeed.builder()
+                .entity(this)
+                .poll(new FunctionPollConfig<Boolean,Boolean>(SERVICE_UP)
+                .period(30, TimeUnit.SECONDS)
+                .callable(new Callable<Boolean>() {
+                    @Override
+                    public Boolean call() throws Exception {
+                        try { return getManagedHostId()!=null }
+                        catch (Exception e) { return false; }
+                    }
+                })
+                .onError(Functions.constant(false))
+                )
+                .poll(new FunctionPollConfig<List,List>(CDH_HOST_ID)
+                .period(30, TimeUnit.SECONDS)
+                .callable(new Callable<String>() {
+                    @Override
+                    public String call() throws Exception {
+                        return getManagedHostId();
+                    }
+                })
+                .onError(Functions.constant(false))
+                )
+                .build();
     }
     
     public String getManagedHostId() {
