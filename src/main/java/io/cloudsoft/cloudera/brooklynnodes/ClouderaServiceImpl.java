@@ -3,8 +3,13 @@ package io.cloudsoft.cloudera.brooklynnodes;
 import io.cloudsoft.cloudera.rest.ClouderaRestCaller;
 
 import java.util.Collection;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
+
+import net.sf.json.JSONArray;
+import net.sf.json.JSONObject;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +38,14 @@ public class ClouderaServiceImpl extends AbstractEntity implements ClouderaServi
     public ClouderaRestCaller getApi() {
         return ClouderaRestCaller.newInstance(getConfig(MANAGER).getAttribute(ClouderaManagerNode.CLOUDERA_MANAGER_HOSTNAME), "admin", "admin");
     }
+    
+    void invokeServiceCommand(String cmd) {
+        boolean result = getApi().invokeServiceCommand(getClusterName(), getServiceName(), cmd).block(5 * 60 * 1000);
+        if (result) {
+            setAttribute(SERVICE_STATE, Lifecycle.ON_FIRE);
+            throw new IllegalStateException("The service failed to " + cmd + ".");
+        }
+    }
 
     public void create() {
         if (getAttribute(SERVICE_STATE)!=null) {
@@ -40,9 +53,9 @@ public class ClouderaServiceImpl extends AbstractEntity implements ClouderaServi
         }
         setAttribute(SERVICE_STATE, Lifecycle.STARTING);
         
-        log.info("Creating CDH service ${this}");
+        log.info("Creating CDH service " + this);
         Boolean buildResult = getConfig(TEMPLATE).build(getApi());
-        log.info("Created CDH service ${this}, result: "+buildResult);
+        log.info("Created CDH service " + this + ", result: " + buildResult);
         
         setAttribute(SERVICE_STATE, buildResult ? Lifecycle.RUNNING : Lifecycle.ON_FIRE);
         setAttribute(SERVICE_NAME, getConfig(TEMPLATE).getName());
@@ -82,32 +95,35 @@ public class ClouderaServiceImpl extends AbstractEntity implements ClouderaServi
                     .onError(Functions.constant(false))
                     )
                 .poll(new FunctionPollConfig<Collection<String>, Collection<String>>(HOSTS)
-                .period(30, TimeUnit.SECONDS)
-                .callable(new Callable<Collection<String>>() {
-                    @Override
-                    public Collection<String> call() throws Exception {
-                        for(Object element : ((Iterable<Object>) getApi().getServiceRolesJson(getClusterName(), getServiceName()))) {
-                            System.out.println(element.getClass());
-                            //return it.items.collect { it.hostRef.hostId };
-                        }
-                        return Lists.newArrayList();
-                    }
-                })
-                //.onError(Functions.constant(false))
+                        .period(30, TimeUnit.SECONDS).callable(new Callable<Collection<String>>() {
+                            @Override
+                            public Collection<String> call() throws Exception {
+                                List<String> ids = Lists.newArrayList();
+                                JSONObject serviceRolesJson = getApi().getServiceRolesJson(getClusterName(), getServiceName());
+                                JSONArray array = serviceRolesJson.getJSONArray("items");
+                                for (Object item : array) {
+                                    String hostId = ((JSONObject) item).getJSONObject("hostRef").getString("hostId");
+                                    ids.add(hostId);
+                                }
+                                return ids;
+                            }
+                        })
                 )
                 .poll(new FunctionPollConfig<Collection<String>, Collection<String>>(ROLES)
                     .period(30, TimeUnit.SECONDS)
                     .callable(new Callable<Collection<String>>() {
                         @Override
                         public Collection<String> call() throws Exception {
-                            for(Object element : ((Iterable<Object>) getApi().getServiceRolesJson(getClusterName(), getServiceName()))) {
-                                System.out.println(element.getClass());
-                                //return (it.items.collect { it.type }) as Set;
+                            Set<String> types = Sets.newHashSet();
+                            JSONObject serviceRolesJson = getApi().getServiceRolesJson(getClusterName(), getServiceName());
+                            JSONArray array = serviceRolesJson.getJSONArray("items");
+                            for (Object item : array) {
+                                String type = ((JSONObject) item).getString("type");
+                                types.add(type);
                             }
-                            return Sets.newHashSet();
+                            return types;
                         }
                     })
-                    //.onError(Functions.constant(false))
                     )
                 .poll(new FunctionPollConfig<Boolean,Boolean>(SERVICE_UP)
                     .period(30, TimeUnit.SECONDS)
@@ -115,9 +131,8 @@ public class ClouderaServiceImpl extends AbstractEntity implements ClouderaServi
                         @Override
                         public Boolean call() throws Exception {
                             try {
-                                Object serviceJson = getApi().getServiceJson(getClusterName(), getServiceName());
-                                return serviceJson != null;
-                                //return (it.serviceState == "STARTED");
+                                JSONObject serviceJson = getApi().getServiceJson(getClusterName(), getServiceName());
+                                return serviceJson.getString("serviceState") != "STARTED";
                             }
                             catch (Exception e) {
                                 return false;
@@ -131,24 +146,20 @@ public class ClouderaServiceImpl extends AbstractEntity implements ClouderaServi
                     .callable(new Callable<String>() {
                         @Override
                         public String call() throws Exception {
-                            Object serviceJson = getApi().getServiceJson(getClusterName(), getServiceName());
-                            return (String) serviceJson;
-                            //return it.healthSummary;
+                            JSONObject serviceJson = getApi().getServiceJson(getClusterName(), getServiceName());
+                            return serviceJson.getString("healthSummary");
                         }
                     })
-                    //.onError(Functions.constant(false))
                     )
                 .poll(new FunctionPollConfig<String, String>(SERVICE_URL)
                     .period(30, TimeUnit.SECONDS)
                     .callable(new Callable<String>() {
                         @Override
                         public String call() throws Exception {
-                            Object serviceJson = getApi().getServiceJson(getClusterName(), getServiceName());
-                            return (String) serviceJson;
-                            //return it.serviceUrl;
+                            JSONObject serviceJson = getApi().getServiceJson(getClusterName(), getServiceName());
+                            return serviceJson.getString("serviceUrl");
                         }
                     })
-                   // .onError(Functions.constant(false))
                     )
                 .build();
     }
@@ -159,9 +170,9 @@ public class ClouderaServiceImpl extends AbstractEntity implements ClouderaServi
     @Override
     @Description("Start the process/service represented by an entity")
     public void start(@NamedParameter("locations") Collection<? extends Location> locations) {
-        if (locations == null) log.debug("Ignoring locations at ${this}");
+        if (locations == null) log.debug("Ignoring locations at " + this);
         if (getAttribute(SERVICE_STATE)==Lifecycle.RUNNING) {
-            log.debug("Ignoring start when already started at ${this}");
+            log.debug("Ignoring start when already started at " + this);
             return;
         }
         setAttribute(SERVICE_STATE, Lifecycle.STARTING);
@@ -174,7 +185,7 @@ public class ClouderaServiceImpl extends AbstractEntity implements ClouderaServi
     @Description("Stop the process/service represented by an entity")
     public void stop() {
         if (getAttribute(SERVICE_STATE)==Lifecycle.STOPPED) {
-            log.debug("Ignoring stop when already stopped at ${this}");
+            log.debug("Ignoring stop when already stopped at " + this);
             return;
         }
         setAttribute(SERVICE_STATE, Lifecycle.STOPPING);
