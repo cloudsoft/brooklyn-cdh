@@ -1,21 +1,21 @@
 package io.cloudsoft.cloudera.rest;
 
-import java.util.List;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import groovyx.net.http.ContentType
 import io.cloudsoft.cloudera.rest.RestDataObjects.ClusterAddInfo
 import io.cloudsoft.cloudera.rest.RestDataObjects.ClusterType
-import io.cloudsoft.cloudera.rest.RestDataObjects.HdfsRoleType;
+import io.cloudsoft.cloudera.rest.RestDataObjects.HdfsRoleType
 import io.cloudsoft.cloudera.rest.RestDataObjects.HostAddInfo
-import io.cloudsoft.cloudera.rest.RestDataObjects.MapReduceRoleType;
-import io.cloudsoft.cloudera.rest.RestDataObjects.RemoteCommand;
-import io.cloudsoft.cloudera.rest.RestDataObjects.RemoteCommandSet;
+import io.cloudsoft.cloudera.rest.RestDataObjects.MapReduceRoleType
+import io.cloudsoft.cloudera.rest.RestDataObjects.RemoteCommand
+import io.cloudsoft.cloudera.rest.RestDataObjects.RemoteCommandSet
 import io.cloudsoft.cloudera.rest.RestDataObjects.ServiceRoleHostInfo
 import io.cloudsoft.cloudera.rest.RestDataObjects.ServiceType
-import brooklyn.util.text.Identifiers;
+
+import net.sf.json.JSONObject
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
+
+import brooklyn.util.text.Identifiers
 
 import com.google.common.base.Preconditions
 
@@ -87,11 +87,11 @@ public class ClouderaRestCaller {
         return caller.doPost("clusters/${URLParamEncoder.encode(clusterName)}/services", body: body, requestContentType: ContentType.JSON).items.collect { it.name }
     }
 
-    public Object getServiceRolesJson(String clusterName, String serviceName) {
+    public JSONObject getServiceRolesJson(String clusterName, String serviceName) {
         return caller.doGet("clusters/${URLParamEncoder.encode(clusterName)}/"+
             "services/${URLParamEncoder.encode(serviceName)}/roles");
     }
-    public Object getServiceRoles(String clusterName, String serviceName) {
+    public JSONObject getServiceRoles(String clusterName, String serviceName) {
         return getServiceRolesJson(clusterName, serviceName).items.collect { it.name }
     }
     public Object getServiceRoleTypesJson(String clusterName, String serviceName) {
@@ -101,7 +101,7 @@ public class ClouderaRestCaller {
     public List<String> getServiceRoleTypes(String clusterName, String serviceName) {
         return getServiceRoleTypesJson(clusterName, serviceName).roleTypeConfigs.collect { it.roleType }
     }
-    public Object getServiceJson(String clusterName, String serviceName) {
+    public JSONObject getServiceJson(String clusterName, String serviceName) {
         return caller.doGet("clusters/${URLParamEncoder.encode(clusterName)}/"+
             "services/${URLParamEncoder.encode(serviceName)}");
     }
