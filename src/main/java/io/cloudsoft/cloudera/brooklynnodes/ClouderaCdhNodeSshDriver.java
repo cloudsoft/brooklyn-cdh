@@ -10,14 +10,14 @@ import org.slf4j.LoggerFactory;
 import brooklyn.entity.basic.AbstractSoftwareProcessSshDriver;
 import brooklyn.entity.basic.EntityLocal;
 import brooklyn.entity.basic.SoftwareProcess;
-import brooklyn.entity.basic.lifecycle.CommonCommands;
 import brooklyn.entity.basic.lifecycle.ScriptHelper;
 import brooklyn.event.basic.DependentConfiguration;
 import brooklyn.location.basic.SshMachineLocation;
 import brooklyn.location.jclouds.JcloudsSshMachineLocation;
 import brooklyn.util.ResourceUtils;
-import brooklyn.util.Time;
 import brooklyn.util.exceptions.Exceptions;
+import brooklyn.util.ssh.CommonCommands;
+import brooklyn.util.time.Time;
 
 import com.google.common.base.Preconditions;
 
