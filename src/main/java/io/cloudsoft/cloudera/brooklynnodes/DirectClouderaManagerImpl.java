@@ -3,6 +3,8 @@ package io.cloudsoft.cloudera.brooklynnodes;
 import static io.cloudsoft.cloudera.brooklynnodes.ClouderaManagerNode.log;
 import io.cloudsoft.cloudera.rest.ClouderaRestCaller;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -17,14 +19,12 @@ import org.jclouds.aws.util.AWSUtils;
 import org.jclouds.compute.ComputeServiceContext;
 import org.jclouds.compute.domain.OsFamily;
 import org.jclouds.compute.domain.TemplateBuilder;
-import org.jclouds.compute.domain.TemplateBuilderSpec;
 import org.jclouds.ec2.EC2ApiMetadata;
 import org.jclouds.ec2.EC2Client;
 import org.jclouds.ec2.domain.IpProtocol;
 import org.jclouds.ec2.domain.Reservation;
 import org.jclouds.ec2.domain.RunningInstance;
 import org.jclouds.googlecomputeengine.GoogleComputeEngineApiMetadata;
-import org.jclouds.googlecomputeengine.compute.options.GoogleComputeEngineTemplateOptions;
 
 import brooklyn.config.render.RendererHints;
 import brooklyn.entity.Entity;
@@ -42,10 +42,11 @@ import brooklyn.util.MutableSet;
 import brooklyn.util.exceptions.Exceptions;
 import brooklyn.util.internal.Repeater;
 
+import com.google.common.base.Charsets;
 import com.google.common.base.Functions;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
+import com.google.common.base.Throwables;
 import com.google.common.collect.Iterables;
+import com.google.common.io.Files;
 
 public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements DirectClouderaManager {
 
@@ -92,7 +93,14 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
         if (location instanceof JcloudsLocation && ((JcloudsLocation)location).getProvider().equals("google-compute-engine")) {
             flags.putAll(GoogleComputeEngineApiMetadata.defaultProperties());
             flags.put("groupId", "brooklyn-cdh");
-            
+        } else if (location instanceof JcloudsLocation && ((JcloudsLocation)location).getProvider().equals("openstack-nova")) {
+                flags.put(JcloudsLocationConfig.KEY_PAIR.getName(), "andrea");  
+                try {
+                    flags.put(JcloudsLocationConfig.LOGIN_USER_PRIVATE_KEY_DATA.getName(), 
+                            Files.toString(new File("/home/brooklyn/andrea.pem"), Charsets.UTF_8));
+                } catch (IOException e) {
+                    throw Throwables.propagate(e);
+                }  
         } else {
             TemplateBuilder builder =  new PortableTemplateBuilder()
               .osFamily(OsFamily.UBUNTU)
@@ -100,9 +108,9 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
               .os64Bit(true).minRam(2560);
       
             flags.put("groupId", "brooklyn-cdh");
-            flags.put(JcloudsLocationConfig.SECURITY_GROUPS.getName(), 
-                    System.getProperty("jclouds.template", "universal"));
         }
+        flags.put(JcloudsLocationConfig.SECURITY_GROUPS.getName(), 
+                System.getProperty("jclouds.template", "universal"));
         return flags;
     }
     
