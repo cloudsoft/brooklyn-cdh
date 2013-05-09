@@ -68,7 +68,12 @@ public class ClouderaCdhNodeImpl extends SoftwareProcessImpl implements Cloudera
         if (location instanceof JcloudsLocation && ((JcloudsLocation)location).getProvider().equals("google-compute-engine")) {
             flags.putAll(GoogleComputeEngineApiMetadata.defaultProperties());
             flags.put("groupId", "brooklyn-cdh");
-        } else if (location instanceof JcloudsLocation && ((JcloudsLocation)location).getProvider().equals("openstack-nova")) {
+            flags.put(JcloudsLocationConfig.TEMPLATE_BUILDER.getName(), new PortableTemplateBuilder().
+                    osFamily(OsFamily.CENTOS).osVersionMatches("6").
+                    os64Bit(true).
+                    locationId("us-central1-a").
+                    minRam(2560));
+            } else if (location instanceof JcloudsLocation && ((JcloudsLocation)location).getProvider().equals("openstack-nova")) {
                 flags.put(JcloudsLocationConfig.KEY_PAIR.getName(), "andrea");  
                 try {
                     flags.put(JcloudsLocationConfig.LOGIN_USER_PRIVATE_KEY_DATA.getName(), 
@@ -77,15 +82,14 @@ public class ClouderaCdhNodeImpl extends SoftwareProcessImpl implements Cloudera
                     throw Throwables.propagate(e);
                 }  
         } else {
-            TemplateBuilder builder =  new PortableTemplateBuilder()
-              .osFamily(OsFamily.UBUNTU)
-              .osVersionMatches("12.04")
-              .os64Bit(true).minRam(2560);
-      
+            flags.put(JcloudsLocationConfig.TEMPLATE_BUILDER.getName(), new PortableTemplateBuilder().
+                    osFamily(OsFamily.UBUNTU).osVersionMatches("12.04").
+                    os64Bit(true).
+                    minRam(2560));
             flags.put("groupId", "brooklyn-cdh");
         }
         flags.put(JcloudsLocationConfig.SECURITY_GROUPS.getName(), 
-                System.getProperty("jclouds.template", "universal"));
+                System.getProperty("jclouds.securityGroups", "universal"));
         return flags;
     }
 
