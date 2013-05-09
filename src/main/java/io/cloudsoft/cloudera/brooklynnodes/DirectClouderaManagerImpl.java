@@ -16,6 +16,7 @@ import org.apache.whirr.ClusterSpec;
 import org.jclouds.aws.util.AWSUtils;
 import org.jclouds.compute.ComputeServiceContext;
 import org.jclouds.compute.domain.OsFamily;
+import org.jclouds.compute.domain.TemplateBuilder;
 import org.jclouds.compute.domain.TemplateBuilderSpec;
 import org.jclouds.ec2.EC2ApiMetadata;
 import org.jclouds.ec2.EC2Client;
@@ -42,6 +43,8 @@ import brooklyn.util.exceptions.Exceptions;
 import brooklyn.util.internal.Repeater;
 
 import com.google.common.base.Functions;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 
 public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements DirectClouderaManager {
@@ -63,7 +66,12 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
                 build();
     }
     
+    protected Map<String, Object> getProvisioningFlags(MachineProvisioningLocation location) {
+        return obtainProvisioningFlags(location);
+    }
+    
     protected Map<String,Object> obtainProvisioningFlags(MachineProvisioningLocation location) {
+        /*
         Map flags = super.obtainProvisioningFlags(location);
         flags.put(JcloudsLocationConfig.TEMPLATE_BUILDER.getName(), new PortableTemplateBuilder().
             osFamily(OsFamily.UBUNTU).osVersionMatches("12.04").
@@ -77,6 +85,23 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
             flags.remove(JcloudsLocationConfig.TEMPLATE_BUILDER.getName());
             flags.putAll(GoogleComputeEngineApiMetadata.defaultProperties());
             flags.put(JcloudsLocationConfig.GROUP_ID.getName(), "brooklyn-cdh");
+        }
+        return flags;
+        */
+        Map flags = super.obtainProvisioningFlags(location); 
+        if (location instanceof JcloudsLocation && ((JcloudsLocation)location).getProvider().equals("google-compute-engine")) {
+            flags.putAll(GoogleComputeEngineApiMetadata.defaultProperties());
+            flags.put("groupId", "brooklyn-cdh");
+            
+        } else {
+            TemplateBuilder builder =  new PortableTemplateBuilder()
+              .osFamily(OsFamily.UBUNTU)
+              .osVersionMatches("12.04")
+              .os64Bit(true).minRam(2560);
+      
+            flags.put("groupId", "brooklyn-cdh");
+            flags.put(JcloudsLocationConfig.SECURITY_GROUPS.getName(), 
+                    System.getProperty("jclouds.template", "universal"));
         }
         return flags;
     }
