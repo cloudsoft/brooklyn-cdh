@@ -16,12 +16,14 @@ import org.apache.whirr.ClusterSpec;
 import org.jclouds.aws.util.AWSUtils;
 import org.jclouds.compute.ComputeServiceContext;
 import org.jclouds.compute.domain.OsFamily;
+import org.jclouds.compute.domain.TemplateBuilderSpec;
 import org.jclouds.ec2.EC2ApiMetadata;
 import org.jclouds.ec2.EC2Client;
 import org.jclouds.ec2.domain.IpProtocol;
 import org.jclouds.ec2.domain.Reservation;
 import org.jclouds.ec2.domain.RunningInstance;
 import org.jclouds.googlecomputeengine.GoogleComputeEngineApiMetadata;
+import org.jclouds.googlecomputeengine.compute.options.GoogleComputeEngineTemplateOptions;
 
 import brooklyn.config.render.RendererHints;
 import brooklyn.entity.Entity;
@@ -71,10 +73,10 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
         
         if (location instanceof JcloudsLocation
                 && ((JcloudsLocation) location).getProvider().equals("google-compute-engine")) {
+            flags.remove(JcloudsLocationConfig.SECURITY_GROUPS.getName());
+            flags.remove(JcloudsLocationConfig.TEMPLATE_BUILDER.getName());
             flags.putAll(GoogleComputeEngineApiMetadata.defaultProperties());
-            flags.put("groupId", "brooklyn-cdh");
-            //flags.remove("inboundPorts");
-            //flags.remove("options");
+            flags.put(JcloudsLocationConfig.GROUP_ID.getName(), "brooklyn-cdh");
         }
         return flags;
     }

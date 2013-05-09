@@ -23,7 +23,7 @@ import brooklyn.entity.Entity;
 import brooklyn.entity.basic.Entities;
 import brooklyn.entity.basic.EntityInternal;
 import brooklyn.entity.proxying.BasicEntitySpec;
-import brooklyn.util.MutableMap;
+import brooklyn.util.collections.MutableMap;
 import brooklyn.util.text.Identifiers;
 
 import com.google.common.base.Preconditions;
@@ -180,7 +180,7 @@ public abstract class ServiceTemplate<T extends ServiceTemplate<?>> extends Abst
     
     @SuppressWarnings({ "rawtypes", "unchecked" })
     public ClouderaService buildWithEntity(Map flags, Entity owner) {
-        MutableMap flags2 = new MutableMap(flags);
+        MutableMap flags2 = MutableMap.copyOf(flags);
         flags2.put("template", this);
         if (manager!=null) flags2.put("manager", manager);
         String name = (String) flags2.get("name");
