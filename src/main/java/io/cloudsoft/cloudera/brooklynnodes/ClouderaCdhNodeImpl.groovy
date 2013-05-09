@@ -3,10 +3,13 @@ package io.cloudsoft.cloudera.brooklynnodes;
 import static brooklyn.util.GroovyJavaMethods.elvis
 import groovy.transform.InheritConstructors
 
+import java.util.Map;
 import java.util.concurrent.Callable
 import java.util.concurrent.TimeUnit
 
 import org.jclouds.compute.domain.OsFamily
+import org.jclouds.compute.domain.TemplateBuilder;
+import org.jclouds.googlecomputeengine.GoogleComputeEngineApiMetadata;
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -20,6 +23,7 @@ import brooklyn.entity.basic.lifecycle.ScriptHelper
 import brooklyn.event.feed.function.FunctionFeed
 import brooklyn.event.feed.function.FunctionPollConfig
 import brooklyn.location.MachineProvisioningLocation
+import brooklyn.location.jclouds.JcloudsLocation;
 import brooklyn.location.jclouds.JcloudsLocationConfig;
 import brooklyn.location.jclouds.templates.PortableTemplateBuilder
 
@@ -37,12 +41,39 @@ public class ClouderaCdhNodeImpl extends SoftwareProcessImpl implements Cloudera
     public Class getDriverInterface() { return ClouderaCdhNodeSshDriver.class; }
     
     protected Map<String,Object> obtainProvisioningFlags(MachineProvisioningLocation location) {
+        /*
         Map flags = super.obtainProvisioningFlags(location);
         flags.templateBuilder = new PortableTemplateBuilder().
             osFamily(OsFamily.UBUNTU).osVersionMatches("12.04").
             os64Bit(true).
             minRam(2560);
         flags.put(JcloudsLocationConfig.SECURITY_GROUPS.getName(), "universal");
+        
+        
+        if (location instanceof JcloudsLocation
+            && ((JcloudsLocation) location).getProvider().equals("google-compute-engine")) {
+        flags.remove(JcloudsLocationConfig.SECURITY_GROUPS.getName());
+        flags.remove(JcloudsLocationConfig.TEMPLATE_BUILDER.getName());
+        flags.putAll(GoogleComputeEngineApiMetadata.defaultProperties());
+        flags.put(JcloudsLocationConfig.GROUP_ID.getName(), "brooklyn-cdh");
+            }   
+        return flags;
+                */
+        Map flags = super.obtainProvisioningFlags(location); 
+        if (location instanceof JcloudsLocation && ((JcloudsLocation)location).getProvider().equals("google-compute-engine")) {
+            flags.putAll(GoogleComputeEngineApiMetadata.defaultProperties());
+            flags.put("groupId", "brooklyn-cdh");
+            
+        } else {
+            TemplateBuilder builder =  new PortableTemplateBuilder()
+              .osFamily(OsFamily.UBUNTU)
+              .osVersionMatches("12.04")
+              .os64Bit(true).minRam(2560);
+      
+            flags.put("groupId", "brooklyn-cdh");
+            flags.put(JcloudsLocationConfig.SECURITY_GROUPS.getName(), 
+                    System.getProperty("jclouds.template", "universal"));
+        }
         return flags;
     }
 
