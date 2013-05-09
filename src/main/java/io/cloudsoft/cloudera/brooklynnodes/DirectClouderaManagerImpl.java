@@ -21,6 +21,7 @@ import org.jclouds.ec2.EC2Client;
 import org.jclouds.ec2.domain.IpProtocol;
 import org.jclouds.ec2.domain.Reservation;
 import org.jclouds.ec2.domain.RunningInstance;
+import org.jclouds.googlecomputeengine.GoogleComputeEngineApiMetadata;
 
 import brooklyn.config.render.RendererHints;
 import brooklyn.entity.Entity;
@@ -59,12 +60,20 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
     }
     
     protected Map<String,Object> obtainProvisioningFlags(MachineProvisioningLocation location) {
-        Map<String,Object> flags = super.obtainProvisioningFlags(location);
+        Map flags = super.obtainProvisioningFlags(location);
         flags.put(JcloudsLocationConfig.TEMPLATE_BUILDER.getName(), new PortableTemplateBuilder().
             osFamily(OsFamily.UBUNTU).osVersionMatches("12.04").
             os64Bit(true).
             minRam(2560));
         flags.put(JcloudsLocationConfig.SECURITY_GROUPS.getName(), "universal");
+        
+        if (location instanceof JcloudsLocation
+                && ((JcloudsLocation) location).getProvider().equals("google-compute-engine")) {
+            flags.putAll(GoogleComputeEngineApiMetadata.defaultProperties());
+            flags.put("groupId", "brooklyn-cdh");
+            //flags.remove("inboundPorts");
+            //flags.remove("options");
+        }
         return flags;
     }
     
