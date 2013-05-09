@@ -3,6 +3,8 @@ package io.cloudsoft.cloudera.brooklynnodes;
 import static brooklyn.util.GroovyJavaMethods.elvis
 import groovy.transform.InheritConstructors
 
+import java.io.File;
+import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.Callable
 import java.util.concurrent.TimeUnit
@@ -27,7 +29,10 @@ import brooklyn.location.jclouds.JcloudsLocation;
 import brooklyn.location.jclouds.JcloudsLocationConfig;
 import brooklyn.location.jclouds.templates.PortableTemplateBuilder
 
+import com.google.common.base.Charsets;
 import com.google.common.base.Functions
+import com.google.common.base.Throwables;
+import com.google.common.io.Files;
 
 @InheritConstructors
 public class ClouderaCdhNodeImpl extends SoftwareProcessImpl implements ClouderaCdhNode {
@@ -63,7 +68,14 @@ public class ClouderaCdhNodeImpl extends SoftwareProcessImpl implements Cloudera
         if (location instanceof JcloudsLocation && ((JcloudsLocation)location).getProvider().equals("google-compute-engine")) {
             flags.putAll(GoogleComputeEngineApiMetadata.defaultProperties());
             flags.put("groupId", "brooklyn-cdh");
-            
+        } else if (location instanceof JcloudsLocation && ((JcloudsLocation)location).getProvider().equals("openstack-nova")) {
+                flags.put(JcloudsLocationConfig.KEY_PAIR.getName(), "andrea");  
+                try {
+                    flags.put(JcloudsLocationConfig.LOGIN_USER_PRIVATE_KEY_DATA.getName(), 
+                            Files.toString(new File("/home/brooklyn/andrea.pem"), Charsets.UTF_8));
+                } catch (IOException e) {
+                    throw Throwables.propagate(e);
+                }  
         } else {
             TemplateBuilder builder =  new PortableTemplateBuilder()
               .osFamily(OsFamily.UBUNTU)
@@ -71,9 +83,9 @@ public class ClouderaCdhNodeImpl extends SoftwareProcessImpl implements Cloudera
               .os64Bit(true).minRam(2560);
       
             flags.put("groupId", "brooklyn-cdh");
-            flags.put(JcloudsLocationConfig.SECURITY_GROUPS.getName(), 
-                    System.getProperty("jclouds.template", "universal"));
         }
+        flags.put(JcloudsLocationConfig.SECURITY_GROUPS.getName(), 
+                System.getProperty("jclouds.template", "universal"));
         return flags;
     }
 
