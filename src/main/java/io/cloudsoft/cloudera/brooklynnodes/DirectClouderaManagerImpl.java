@@ -194,18 +194,23 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
         FunctionFeed feed = FunctionFeed.builder()
                 .entity(this)
                 .poll(new FunctionPollConfig<Boolean,Boolean>(SERVICE_UP)
-                        .period(15, TimeUnit.SECONDS)
+                        .period(30, TimeUnit.SECONDS)
                         .callable(new Callable<Boolean>() {
                             @Override
                             public Boolean call() throws Exception {
-                                try { return (getRestCaller().getHosts()!=null); } 
-                                catch (Exception e) { return false; }
+                                try { 
+                                    return (getRestCaller().getHosts()!=null); 
+                                } 
+                                catch (Exception e) {
+                                    log.error("Cannot execute getRestCaller().getHosts()", e); 
+                                    return false; 
+                                }
                             }
                           })
                           .onSuccess(Functions.<Boolean>identity())
                         )
                 .poll(new FunctionPollConfig<List,List>(MANAGED_HOSTS)
-                        .period(5, TimeUnit.SECONDS)
+                        .period(30, TimeUnit.SECONDS)
                         .callable(new Callable<List>() {
                             @Override
                             public List call() throws Exception {
@@ -215,7 +220,7 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
                           .onSuccess(Functions.<List>identity())
                         )
                 .poll(new FunctionPollConfig<List,List>(MANAGED_CLUSTERS)
-                        .period(5, TimeUnit.SECONDS)
+                        .period(30, TimeUnit.SECONDS)
                         .callable(new Callable<List>() {
                             @Override
                             public List call() throws Exception {

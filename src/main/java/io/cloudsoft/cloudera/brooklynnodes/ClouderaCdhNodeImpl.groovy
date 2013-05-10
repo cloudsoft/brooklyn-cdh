@@ -108,7 +108,6 @@ public class ClouderaCdhNodeImpl extends SoftwareProcessImpl implements Cloudera
          mgdh.poll(CDH_HOST_ID);
          mgdh.poll(SERVICE_UP, { it!=null });
          */
-
         FunctionFeed feed = FunctionFeed.builder()
                 .entity(this)
                 .poll(new FunctionPollConfig<Boolean,Boolean>(SERVICE_UP)
@@ -116,8 +115,12 @@ public class ClouderaCdhNodeImpl extends SoftwareProcessImpl implements Cloudera
                 .callable(new Callable<Boolean>() {
                     @Override
                     public Boolean call() throws Exception {
-                        try { return getManagedHostId()!=null }
-                        catch (Exception e) { return false; }
+                        try { 
+                            return getManagedHostId() != null; 
+                        } catch (Exception e) {
+                            log.error(e); 
+                            return false; 
+                        }
                     }
                 })
                 .onError(Functions.constant(false))

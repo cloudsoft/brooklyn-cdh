@@ -41,7 +41,7 @@ public class ClouderaServiceImpl extends AbstractEntity implements ClouderaServi
     
     void invokeServiceCommand(String cmd) {
         boolean result = getApi().invokeServiceCommand(getClusterName(), getServiceName(), cmd).block(5 * 60 * 1000);
-        if (result) {
+        if (!result) {
             setAttribute(SERVICE_STATE, Lifecycle.ON_FIRE);
             throw new IllegalStateException("The service failed to " + cmd + ".");
         }
@@ -53,9 +53,9 @@ public class ClouderaServiceImpl extends AbstractEntity implements ClouderaServi
         }
         setAttribute(SERVICE_STATE, Lifecycle.STARTING);
         
-        log.info("Creating CDH service " + this);
+        log.info("Creating CDH service " + this.getDisplayName());
         Boolean buildResult = getConfig(TEMPLATE).build(getApi());
-        log.info("Created CDH service " + this + ", result: " + buildResult);
+        log.info("Created CDH service " + this.getDisplayName() + ", result: " + buildResult);
         
         setAttribute(SERVICE_STATE, buildResult ? Lifecycle.RUNNING : Lifecycle.ON_FIRE);
         setAttribute(SERVICE_NAME, getConfig(TEMPLATE).getName());
@@ -132,9 +132,10 @@ public class ClouderaServiceImpl extends AbstractEntity implements ClouderaServi
                         public Boolean call() throws Exception {
                             try {
                                 JSONObject serviceJson = getApi().getServiceJson(getClusterName(), getServiceName());
-                                return serviceJson.getString("serviceState") != "STARTED";
+                                return serviceJson.getString("serviceState") == "STARTED";
                             }
                             catch (Exception e) {
+                                log.error("Can't connect to " + getServiceName(), e);
                                 return false;
                             }
                         }
