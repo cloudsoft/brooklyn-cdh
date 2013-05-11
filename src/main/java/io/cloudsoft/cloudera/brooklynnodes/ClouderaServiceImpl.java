@@ -64,19 +64,6 @@ public class ClouderaServiceImpl extends AbstractEntity implements ClouderaServi
     }
     
     protected void connectSensors() {
-        /*
-        if (!sensorRegistry) sensorRegistry = new SensorRegistry(this);
-        FunctionSensorAdapter fnSensorAdaptor = sensorRegistry.register(new FunctionSensorAdapter({ getApi() }, period: 30*TimeUnit.SECONDS));
-        fnSensorAdaptor.poll(SERVICE_REGISTERED, { it.getServices(getClusterName()).contains(getServiceName()) });
-        def roles = fnSensorAdaptor.then({ it.getServiceRolesJson(getClusterName(), getServiceName()) });
-        roles.poll(HOSTS) { it.items.collect { it.hostRef.hostId } }
-        roles.poll(ROLES) { (it.items.collect { it.type }) as Set }
-        def state = fnSensorAdaptor.then({ it.getServiceJson(getClusterName(), getServiceName()) });
-        state.poll(SERVICE_UP, { it.serviceState == "STARTED" });
-        state.poll(SERVICE_HEALTH, { it.healthSummary });
-        state.poll(SERVICE_URL, { it.serviceUrl });
-        sensorRegistry.activateAdapters();
-        */
         FunctionFeed feed = FunctionFeed.builder()
                 .entity(this)
                 .poll(new FunctionPollConfig<Boolean,Boolean>(SERVICE_REGISTERED)

@@ -1,4 +1,4 @@
-package io.cloudsoft.cloudera.brooklynnodes;
+package io.cloudsoft.cloudera.brooklynnodes
 
 import static brooklyn.util.GroovyJavaMethods.elvis
 import groovy.transform.InheritConstructors
@@ -46,51 +46,41 @@ public class ClouderaCdhNodeImpl extends SoftwareProcessImpl implements Cloudera
     public Class getDriverInterface() { return ClouderaCdhNodeSshDriver.class; }
     
     protected Map<String,Object> obtainProvisioningFlags(MachineProvisioningLocation location) {
-        /*
         Map flags = super.obtainProvisioningFlags(location);
-        flags.templateBuilder = new PortableTemplateBuilder().
-            osFamily(OsFamily.UBUNTU).osVersionMatches("12.04").
-            os64Bit(true).
-            minRam(2560);
-        flags.put(JcloudsLocationConfig.SECURITY_GROUPS.getName(), "universal");
-        
-        
-        if (location instanceof JcloudsLocation
-            && ((JcloudsLocation) location).getProvider().equals("google-compute-engine")) {
-        flags.remove(JcloudsLocationConfig.SECURITY_GROUPS.getName());
-        flags.remove(JcloudsLocationConfig.TEMPLATE_BUILDER.getName());
-        flags.putAll(GoogleComputeEngineApiMetadata.defaultProperties());
-        flags.put(JcloudsLocationConfig.GROUP_ID.getName(), "brooklyn-cdh");
-            }   
-        return flags;
-                */
-        Map flags = super.obtainProvisioningFlags(location); 
-        if (location instanceof JcloudsLocation && ((JcloudsLocation)location).getProvider().equals("google-compute-engine")) {
+        if (isJcloudsLocation(location, "google-compute-engine")) {
             flags.putAll(GoogleComputeEngineApiMetadata.defaultProperties());
             flags.put("groupId", "brooklyn-cdh");
-            flags.put(JcloudsLocationConfig.TEMPLATE_BUILDER.getName(), new PortableTemplateBuilder().
-                    osFamily(OsFamily.CENTOS).osVersionMatches("6").
-                    os64Bit(true).
-                    locationId("us-central1-a").
-                    minRam(2560));
-            } else if (location instanceof JcloudsLocation && ((JcloudsLocation)location).getProvider().equals("openstack-nova")) {
-                flags.put(JcloudsLocationConfig.KEY_PAIR.getName(), "andrea");  
-                try {
-                    flags.put(JcloudsLocationConfig.LOGIN_USER_PRIVATE_KEY_DATA.getName(), 
-                            Files.toString(new File("/home/brooklyn/andrea.pem"), Charsets.UTF_8));
-                } catch (IOException e) {
-                    throw Throwables.propagate(e);
-                }  
+            flags.put(JcloudsLocationConfig.TEMPLATE_BUILDER.getName(),
+                    new PortableTemplateBuilder().osFamily(OsFamily.CENTOS).osVersionMatches("6").os64Bit(true)
+                            .locationId("us-central1-a").minRam(2560));
+        } else if (isJcloudsLocation(location, "openstack-nova")) {
+            flags.put(JcloudsLocationConfig.SECURITY_GROUPS.getName(),
+                    System.getProperty("jclouds.securityGroups", "universal"));
+            flags.put(JcloudsLocationConfig.KEY_PAIR.getName(), "andrea");
+            try {
+                flags.put(JcloudsLocationConfig.LOGIN_USER_PRIVATE_KEY_DATA.getName(),
+                        Files.toString(new File("/home/brooklyn/andrea.pem"), Charsets.UTF_8));
+            } catch (IOException e) {
+                throw Throwables.propagate(e);
+            }
+        } else if (isJcloudsLocation(location, "rackspace-cloudservers-uk") || 
+                isJcloudsLocation(location, "cloudservers-uk")) {
+            flags.put(JcloudsLocationConfig.TEMPLATE_BUILDER.getName(),
+                    new PortableTemplateBuilder().osFamily(OsFamily.CENTOS).osVersionMatches("6").os64Bit(true)
+                    .minRam(2560));
         } else {
-            flags.put(JcloudsLocationConfig.TEMPLATE_BUILDER.getName(), new PortableTemplateBuilder().
-                    osFamily(OsFamily.UBUNTU).osVersionMatches("12.04").
-                    os64Bit(true).
-                    minRam(2560));
+            flags.put(JcloudsLocationConfig.TEMPLATE_BUILDER.getName(),
+                    new PortableTemplateBuilder().osFamily(OsFamily.UBUNTU).osVersionMatches("12.04").os64Bit(true)
+                            .minRam(2560));
             flags.put("groupId", "brooklyn-cdh");
+            flags.put(JcloudsLocationConfig.SECURITY_GROUPS.getName(),
+                    System.getProperty("jclouds.securityGroups", "universal"));
         }
-        flags.put(JcloudsLocationConfig.SECURITY_GROUPS.getName(), 
-                System.getProperty("jclouds.securityGroups", "universal"));
         return flags;
+    }
+    
+    private boolean isJcloudsLocation(MachineProvisioningLocation location, String providerName) {
+        return location instanceof JcloudsLocation && ((JcloudsLocation) location).getProvider().equals(providerName);
     }
 
     // 7180, 7182, 8088, 8888, 50030, 50060, 50070, 50090, 60010, 60020, 60030
