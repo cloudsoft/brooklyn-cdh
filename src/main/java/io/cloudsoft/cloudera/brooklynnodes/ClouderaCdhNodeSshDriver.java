@@ -161,5 +161,10 @@ public class ClouderaCdhNodeSshDriver extends AbstractSoftwareProcessSshDriver i
     public void launch() {
         // nothing needed here, services get launched separately
     }
+    
+    @Override
+    public String toString() {
+        return "SshDriver["+entity+"]";
+    }
 
 }
