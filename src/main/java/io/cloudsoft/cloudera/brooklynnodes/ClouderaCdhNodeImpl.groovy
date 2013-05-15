@@ -1,6 +1,7 @@
 package io.cloudsoft.cloudera.brooklynnodes
 
 import static brooklyn.util.GroovyJavaMethods.elvis
+import static io.cloudsoft.cloudera.brooklynnodes.ClouderaManagerNode.log;
 import groovy.transform.InheritConstructors
 
 import java.io.File;
@@ -12,6 +13,7 @@ import java.util.concurrent.TimeUnit
 import org.jclouds.compute.domain.OsFamily
 import org.jclouds.compute.domain.TemplateBuilder;
 import org.jclouds.googlecomputeengine.GoogleComputeEngineApiMetadata;
+import org.jclouds.openstack.nova.v2_0.config.NovaProperties;
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -54,27 +56,28 @@ public class ClouderaCdhNodeImpl extends SoftwareProcessImpl implements Cloudera
                     new PortableTemplateBuilder().osFamily(OsFamily.CENTOS).osVersionMatches("6").os64Bit(true)
                             .locationId("us-central1-a").minRam(2560));
         } else if (isJcloudsLocation(location, "openstack-nova")) {
+            flags.put(NovaProperties.AUTO_ALLOCATE_FLOATING_IPS,
+                    System.getProperty(NovaProperties.AUTO_ALLOCATE_FLOATING_IPS, "false"));
+            flags.put(NovaProperties.AUTO_GENERATE_KEYPAIRS,
+                    System.getProperty(NovaProperties.AUTO_GENERATE_KEYPAIRS, "true"));
             flags.put(JcloudsLocationConfig.SECURITY_GROUPS.getName(),
                     System.getProperty("jclouds.securityGroups", "universal"));
-            flags.put(JcloudsLocationConfig.KEY_PAIR.getName(), "andrea");
-            try {
-                flags.put(JcloudsLocationConfig.LOGIN_USER_PRIVATE_KEY_DATA.getName(),
-                        Files.toString(new File("/home/brooklyn/andrea.pem"), Charsets.UTF_8));
-            } catch (IOException e) {
-                throw Throwables.propagate(e);
-            }
         } else if (isJcloudsLocation(location, "rackspace-cloudservers-uk") || 
                 isJcloudsLocation(location, "cloudservers-uk")) {
             flags.put(JcloudsLocationConfig.TEMPLATE_BUILDER.getName(),
                     new PortableTemplateBuilder().osFamily(OsFamily.CENTOS).osVersionMatches("6").os64Bit(true)
                     .minRam(2560));
         } else {
-            flags.put(JcloudsLocationConfig.TEMPLATE_BUILDER.getName(),
-                    new PortableTemplateBuilder().osFamily(OsFamily.UBUNTU).osVersionMatches("12.04").os64Bit(true)
-                            .minRam(2560));
-            flags.put("groupId", "brooklyn-cdh");
+            flags.put(NovaProperties.AUTO_ALLOCATE_FLOATING_IPS,
+                    System.getProperty(NovaProperties.AUTO_ALLOCATE_FLOATING_IPS, "false"));
+            flags.put(NovaProperties.AUTO_GENERATE_KEYPAIRS,
+                    System.getProperty(NovaProperties.AUTO_GENERATE_KEYPAIRS, "true"));
             flags.put(JcloudsLocationConfig.SECURITY_GROUPS.getName(),
                     System.getProperty("jclouds.securityGroups", "universal"));
+        }
+        log.info(this.getClass().getName() +" flags");
+        for (Object key : flags.keySet()) {
+            log.info("key: " + key + ", value: " + flags.get(key));
         }
         return flags;
     }
@@ -92,12 +95,6 @@ public class ClouderaCdhNodeImpl extends SoftwareProcessImpl implements Cloudera
     
     public void connectSensors() {
         super.connectSensors();
-        /*
-         FunctionSensorAdapter fnSensorAdaptor = sensorRegistry.register(new FunctionSensorAdapter({}, period: 30*TimeUnit.SECONDS));
-         def mgdh = fnSensorAdaptor.then { getManagedHostId() };
-         mgdh.poll(CDH_HOST_ID);
-         mgdh.poll(SERVICE_UP, { it!=null });
-         */
         FunctionFeed feed = FunctionFeed.builder()
                 .entity(this)
                 .poll(new FunctionPollConfig<Boolean,Boolean>(SERVICE_UP)
