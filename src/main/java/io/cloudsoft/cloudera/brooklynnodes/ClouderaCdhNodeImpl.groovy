@@ -59,19 +59,23 @@ public class ClouderaCdhNodeImpl extends SoftwareProcessImpl implements Cloudera
             flags.put(NovaProperties.AUTO_ALLOCATE_FLOATING_IPS,
                     System.getProperty(NovaProperties.AUTO_ALLOCATE_FLOATING_IPS, "false"));
             flags.put(NovaProperties.AUTO_GENERATE_KEYPAIRS,
-                    System.getProperty(NovaProperties.AUTO_GENERATE_KEYPAIRS, "true"));
+                    System.getProperty(NovaProperties.AUTO_GENERATE_KEYPAIRS, "false"));
             flags.put(JcloudsLocationConfig.SECURITY_GROUPS.getName(),
                     System.getProperty("jclouds.securityGroups", "universal"));
+            
+            flags.put(JcloudsLocationConfig.KEY_PAIR.getName(), System.getProperty("keyPair", "cdh"));
+                flags.put(JcloudsLocationConfig.LOGIN_USER_PRIVATE_KEY_FILE.getName(),
+                        System.getProperty(JcloudsLocationConfig.LOGIN_USER_PRIVATE_KEY_FILE.getName(), "/home/brooklyn/cdh.pem"));
         } else if (isJcloudsLocation(location, "rackspace-cloudservers-uk") || 
                 isJcloudsLocation(location, "cloudservers-uk")) {
             flags.put(JcloudsLocationConfig.TEMPLATE_BUILDER.getName(),
                     new PortableTemplateBuilder().osFamily(OsFamily.CENTOS).osVersionMatches("6").os64Bit(true)
                     .minRam(2560));
         } else {
-            flags.put(NovaProperties.AUTO_ALLOCATE_FLOATING_IPS,
-                    System.getProperty(NovaProperties.AUTO_ALLOCATE_FLOATING_IPS, "false"));
-            flags.put(NovaProperties.AUTO_GENERATE_KEYPAIRS,
-                    System.getProperty(NovaProperties.AUTO_GENERATE_KEYPAIRS, "true"));
+            flags.put(NovaProperties.AUTO_ALLOCATE_FLOATING_IPS.getName(),
+                    System.getProperty(NovaProperties.AUTO_ALLOCATE_FLOATING_IPS.getName(), "false"));
+            flags.put(NovaProperties.AUTO_GENERATE_KEYPAIRS.getName(),
+                    System.getProperty(NovaProperties.AUTO_GENERATE_KEYPAIRS.getName(), "true"));
             flags.put(JcloudsLocationConfig.SECURITY_GROUPS.getName(),
                     System.getProperty("jclouds.securityGroups", "universal"));
         }
