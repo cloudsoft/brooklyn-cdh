@@ -28,10 +28,6 @@
             <version>${brooklyn.version}</version>
             <exclusions>
                 <exclusion>
-                    <groupId>ch.qos.logback</groupId>
-                    <artifactId>logback-classic</artifactId>
-                </exclusion>
-                <exclusion>
                     <groupId>org.jclouds</groupId>
                     <artifactId>jclouds-allcompute</artifactId>
                 </exclusion>
@@ -44,7 +40,7 @@
                     <artifactId>jclouds-sshj</artifactId>
                 </exclusion>
             </exclusions>
-        </dependency>
+        </dependency>       
         <dependency>
             <groupId>io.brooklyn</groupId>
             <artifactId>brooklyn-test-support</artifactId>
