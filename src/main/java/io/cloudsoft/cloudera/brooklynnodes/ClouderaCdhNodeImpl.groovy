@@ -1,6 +1,7 @@
 package io.cloudsoft.cloudera.brooklynnodes
 
 import static brooklyn.util.GroovyJavaMethods.elvis
+import static com.google.common.base.Preconditions.checkNotNull;
 import static io.cloudsoft.cloudera.brooklynnodes.ClouderaManagerNode.log;
 import groovy.transform.InheritConstructors
 
@@ -27,6 +28,7 @@ import brooklyn.entity.basic.lifecycle.ScriptHelper
 import brooklyn.event.feed.function.FunctionFeed
 import brooklyn.event.feed.function.FunctionPollConfig
 import brooklyn.location.MachineProvisioningLocation
+import brooklyn.location.cloud.CloudLocationConfig;
 import brooklyn.location.jclouds.JcloudsLocation;
 import brooklyn.location.jclouds.JcloudsLocationConfig;
 import brooklyn.location.jclouds.templates.PortableTemplateBuilder
@@ -56,17 +58,21 @@ public class ClouderaCdhNodeImpl extends SoftwareProcessImpl implements Cloudera
                     new PortableTemplateBuilder().osFamily(OsFamily.CENTOS).osVersionMatches("6").os64Bit(true)
                             .locationId("us-central1-a").minRam(2560));
         } else if (isJcloudsLocation(location, "openstack-nova")) {
-            flags.put(NovaProperties.AUTO_ALLOCATE_FLOATING_IPS,
-                    System.getProperty(NovaProperties.AUTO_ALLOCATE_FLOATING_IPS, "false"));
-            flags.put(NovaProperties.AUTO_GENERATE_KEYPAIRS,
-                    System.getProperty(NovaProperties.AUTO_GENERATE_KEYPAIRS, "false"));
-            flags.put(JcloudsLocationConfig.SECURITY_GROUPS.getName(),
-                    System.getProperty("jclouds.securityGroups", "universal"));
-            
-            flags.put(JcloudsLocationConfig.KEY_PAIR.getName(), System.getProperty("keyPair", "cdh"));
-                flags.put(JcloudsLocationConfig.LOGIN_USER_PRIVATE_KEY_FILE.getName(),
-                        System.getProperty(JcloudsLocationConfig.LOGIN_USER_PRIVATE_KEY_FILE.getName(), "/home/brooklyn/cdh.pem"));
-        } else if (isJcloudsLocation(location, "rackspace-cloudservers-uk") || 
+            flags.put(CloudLocationConfig.CLOUD_ENDPOINT, "https://cloudfirst.demos.ibm.com/keystone/v2.0");
+            flags.put(JcloudsLocationConfig.TEMPLATE_BUILDER.getName(),
+                    new PortableTemplateBuilder().imageId("RegionOne/eeced716-bb37-4f3b-a3d6-977e17f20b21")
+                    .hardwareId("RegionOne/9"));
+            flags.put(NovaProperties.AUTO_ALLOCATE_FLOATING_IPS, "false");
+            flags.put(NovaProperties.AUTO_GENERATE_KEYPAIRS, "false");
+            Object securityGroups = 
+                    checkNotNull(location.getConfig(JcloudsLocationConfig.SECURITY_GROUPS), "securityGroups must be declared");
+            flags.put(JcloudsLocationConfig.SECURITY_GROUPS.getName(), securityGroups);
+            String keyPair = checkNotNull(location.getConfig(JcloudsLocationConfig.KEY_PAIR), "keypair must be declared");
+            flags.put(JcloudsLocationConfig.KEY_PAIR.getName(), keyPair);
+            String loginUserPrivateKeyFileName = 
+                    checkNotNull(location.getConfig(JcloudsLocationConfig.LOGIN_USER_PRIVATE_KEY_FILE), "login user private key must be declared");
+            flags.put(JcloudsLocationConfig.LOGIN_USER_PRIVATE_KEY_FILE.getName(), loginUserPrivateKeyFileName);
+        } else if (isJcloudsLocation(location, "rackspace-cloudservers-uk") ||
                 isJcloudsLocation(location, "cloudservers-uk")) {
             flags.put(JcloudsLocationConfig.TEMPLATE_BUILDER.getName(),
                     new PortableTemplateBuilder().osFamily(OsFamily.CENTOS).osVersionMatches("6").os64Bit(true)
@@ -78,10 +84,6 @@ public class ClouderaCdhNodeImpl extends SoftwareProcessImpl implements Cloudera
                     System.getProperty(NovaProperties.AUTO_GENERATE_KEYPAIRS.getName(), "true"));
             flags.put(JcloudsLocationConfig.SECURITY_GROUPS.getName(),
                     System.getProperty("jclouds.securityGroups", "universal"));
-        }
-        log.info(this.getClass().getName() +" flags");
-        for (Object key : flags.keySet()) {
-            log.info("key: " + key + ", value: " + flags.get(key));
         }
         return flags;
     }
