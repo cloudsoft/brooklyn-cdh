@@ -1,10 +1,9 @@
 package io.cloudsoft.cloudera.brooklynnodes;
 
+import static com.google.common.base.Preconditions.checkNotNull;
 import static io.cloudsoft.cloudera.brooklynnodes.ClouderaManagerNode.log;
 import io.cloudsoft.cloudera.rest.ClouderaRestCaller;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -18,7 +17,6 @@ import org.apache.whirr.ClusterSpec;
 import org.jclouds.aws.util.AWSUtils;
 import org.jclouds.compute.ComputeServiceContext;
 import org.jclouds.compute.domain.OsFamily;
-import org.jclouds.compute.domain.TemplateBuilder;
 import org.jclouds.ec2.EC2ApiMetadata;
 import org.jclouds.ec2.EC2Client;
 import org.jclouds.ec2.domain.IpProtocol;
@@ -34,6 +32,7 @@ import brooklyn.event.feed.function.FunctionFeed;
 import brooklyn.event.feed.function.FunctionPollConfig;
 import brooklyn.location.Location;
 import brooklyn.location.MachineProvisioningLocation;
+import brooklyn.location.cloud.CloudLocationConfig;
 import brooklyn.location.jclouds.JcloudsLocation;
 import brooklyn.location.jclouds.JcloudsLocationConfig;
 import brooklyn.location.jclouds.JcloudsSshMachineLocation;
@@ -43,11 +42,8 @@ import brooklyn.util.MutableSet;
 import brooklyn.util.exceptions.Exceptions;
 import brooklyn.util.internal.Repeater;
 
-import com.google.common.base.Charsets;
 import com.google.common.base.Functions;
-import com.google.common.base.Throwables;
 import com.google.common.collect.Iterables;
-import com.google.common.io.Files;
 
 public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements DirectClouderaManager {
 
@@ -80,15 +76,20 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
                     new PortableTemplateBuilder().osFamily(OsFamily.CENTOS).osVersionMatches("6").os64Bit(true)
                             .locationId("us-central1-a").minRam(2560));
         } else if (isJcloudsLocation(location, "openstack-nova")) {
-            flags.put(NovaProperties.AUTO_ALLOCATE_FLOATING_IPS,
-                    System.getProperty(NovaProperties.AUTO_ALLOCATE_FLOATING_IPS, "false"));
-            flags.put(NovaProperties.AUTO_GENERATE_KEYPAIRS,
-                    System.getProperty(NovaProperties.AUTO_GENERATE_KEYPAIRS, "false"));
-            flags.put(JcloudsLocationConfig.SECURITY_GROUPS.getName(),
-                    System.getProperty("jclouds.securityGroups", "universal"));
-            flags.put(JcloudsLocationConfig.KEY_PAIR.getName(), System.getProperty("keyPair", "cdh"));
-                flags.put(JcloudsLocationConfig.LOGIN_USER_PRIVATE_KEY_FILE.getName(),
-                        System.getProperty(JcloudsLocationConfig.LOGIN_USER_PRIVATE_KEY_FILE.getName(), "/home/brooklyn/cdh.pem"));
+            flags.put(CloudLocationConfig.CLOUD_ENDPOINT, "https://cloudfirst.demos.ibm.com/keystone/v2.0");
+            flags.put(JcloudsLocationConfig.TEMPLATE_BUILDER.getName(),
+                    new PortableTemplateBuilder().imageId("RegionOne/eeced716-bb37-4f3b-a3d6-977e17f20b21")
+                    .hardwareId("RegionOne/9"));
+            flags.put(NovaProperties.AUTO_ALLOCATE_FLOATING_IPS, "false");
+            flags.put(NovaProperties.AUTO_GENERATE_KEYPAIRS, "false");
+            Object securityGroups = 
+                    checkNotNull(location.getConfig(JcloudsLocationConfig.SECURITY_GROUPS), "securityGroups must be declared");
+            flags.put(JcloudsLocationConfig.SECURITY_GROUPS.getName(), securityGroups);
+            String keyPair = checkNotNull(location.getConfig(JcloudsLocationConfig.KEY_PAIR), "keypair must be declared");
+            flags.put(JcloudsLocationConfig.KEY_PAIR.getName(), keyPair);
+            String loginUserPrivateKeyFileName = 
+                    checkNotNull(location.getConfig(JcloudsLocationConfig.LOGIN_USER_PRIVATE_KEY_FILE), "login user private key must be declared");
+            flags.put(JcloudsLocationConfig.LOGIN_USER_PRIVATE_KEY_FILE.getName(), loginUserPrivateKeyFileName);
         } else if (isJcloudsLocation(location, "rackspace-cloudservers-uk") || 
                 isJcloudsLocation(location, "cloudservers-uk")) {
             // securityGroups are not supported
@@ -102,11 +103,6 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
                     System.getProperty(NovaProperties.AUTO_GENERATE_KEYPAIRS, "true"));
             flags.put(JcloudsLocationConfig.SECURITY_GROUPS.getName(),
                     System.getProperty("jclouds.securityGroups", "universal"));
-        }
-        
-        log.info(this.getClass().getName() +" flags");
-        for (Object key : flags.keySet()) {
-            log.info("key: " + key + ", value: " + flags.get(key));
         }
         return flags;
     }
