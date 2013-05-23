@@ -29,6 +29,9 @@ public interface ClouderaCdhNode extends SoftwareProcess {
     
     public static final AttributeSensor<String> CDH_HOST_ID = new BasicAttributeSensor<String>(
         	String.class, "whirr.cm.cdh.node.id", "ID of host as presented to CM (usually internal hostname)");
+    
+    public static final BasicConfigKey<String> APT_PROXY = 
+            new BasicConfigKey<String>(String.class, "cloudera.cdh.node.apt.proxy.url", "URL of apt proxy");
 
     public static final Effector<String> COLLECT_METRICS = new MethodEffector<String>(ClouderaCdhNode.class, "collectMetrics");
      

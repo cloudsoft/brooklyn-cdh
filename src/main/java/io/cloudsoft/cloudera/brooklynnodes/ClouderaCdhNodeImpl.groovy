@@ -78,10 +78,8 @@ public class ClouderaCdhNodeImpl extends SoftwareProcessImpl implements Cloudera
                     new PortableTemplateBuilder().osFamily(OsFamily.CENTOS).osVersionMatches("6").os64Bit(true)
                     .minRam(2560));
         } else {
-            flags.put(NovaProperties.AUTO_ALLOCATE_FLOATING_IPS.getName(),
-                    System.getProperty(NovaProperties.AUTO_ALLOCATE_FLOATING_IPS.getName(), "false"));
-            flags.put(NovaProperties.AUTO_GENERATE_KEYPAIRS.getName(),
-                    System.getProperty(NovaProperties.AUTO_GENERATE_KEYPAIRS.getName(), "true"));
+            flags.put(JcloudsLocationConfig.TEMPLATE_BUILDER.getName(),
+                    new PortableTemplateBuilder().osFamily(OsFamily.UBUNTU).osVersionMatches("12").os64Bit(true).minRam(2560));
             flags.put(JcloudsLocationConfig.SECURITY_GROUPS.getName(),
                     System.getProperty("jclouds.securityGroups", "universal"));
         }
