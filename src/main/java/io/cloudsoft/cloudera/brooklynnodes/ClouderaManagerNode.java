@@ -31,7 +31,13 @@ public interface ClouderaManagerNode extends Entity {
     		List.class, "cloudera.manager.hosts", "List of hosts managed by this CM instance");
 
     public static final AttributeSensor<List> MANAGED_CLUSTERS = new BasicAttributeSensor<List>(
-    		List.class, "clouder.manager.clusters", "List of clusters managed by this CM instance");
+    		List.class, "cloudera.manager.clusters", "List of clusters managed by this CM instance");
+    
+    public static final BasicConfigKey<String> APT_PROXY = 
+        new BasicConfigKey<String>(String.class, "cloudera.manager.apt.proxy.url", "URL of apt proxy");
+    
+    public static final BasicConfigKey<Boolean> USE_IP_ADDRESS = 
+        new BasicConfigKey<Boolean>(Boolean.class, "cloudera.manager.use.ip.address", "Force ip address usage instead of hostname", false);
 
     public ClouderaCdhNode findEntityForHostId(String hostId);
     

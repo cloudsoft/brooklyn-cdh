@@ -1,8 +1,15 @@
 package io.cloudsoft.cloudera.brooklynnodes;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.List;
 import java.util.Set;
+
+import joptsimple.internal.Strings;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,6 +27,9 @@ import brooklyn.util.ssh.CommonCommands;
 import brooklyn.util.time.Time;
 
 import com.google.common.base.Preconditions;
+import com.google.common.base.Throwables;
+import com.google.common.collect.Lists;
+import com.google.common.io.CharStreams;
 
 public class ClouderaCdhNodeSshDriver extends AbstractSoftwareProcessSshDriver implements ClouderaCdhNodeDriver {
 
@@ -48,17 +58,39 @@ public class ClouderaCdhNodeSshDriver extends AbstractSoftwareProcessSshDriver i
         getMachine().copyTo(new ResourceUtils(entity).getResourceFromUrl("classpath://scm_prepare_node.tgz"), "/tmp/scm_prepare_node.tgz");
         getMachine().copyTo(new ResourceUtils(entity).getResourceFromUrl("classpath://etc_cloudera-scm-agent_config.ini"), "/tmp/etc_cloudera-scm-agent_config.ini");
 
+        String aptProxyUrl = getLocation().getConfig(ClouderaCdhNode.APT_PROXY);
+        if(!Strings.isNullOrEmpty(aptProxyUrl)) {
+            InputStream proxy = generatePackageManagerProxyFile(aptProxyUrl);
+            getMachine().copyTo(proxy, "/tmp/02proxy");
+            newScript(INSTALLING+":setAptProxy")
+                .body.append(CommonCommands.sudo("mv /tmp/02proxy /etc/apt/apt.conf.d/02proxy"))
+                .execute();
+        }
+        
+        List<String> commands = Lists.newArrayList();
+        commands.add(CommonCommands.INSTALL_TAR);
+        commands.add("cd /tmp");
+        commands.add("sudo mkdir /etc/cloudera-scm-agent/");
+        commands.add("sudo mv etc_cloudera-scm-agent_config.ini /etc/cloudera-scm-agent/config.ini");
+        commands.add("tar xzfv scm_prepare_node.tgz");
+        
         newScript(INSTALLING).
                 updateTaskAndFailOnNonZeroResultCode().
-                body.append(
-                    CommonCommands.INSTALL_TAR,
-                    "cd /tmp", 
-                    "sudo mkdir /etc/cloudera-scm-agent/",
-                    "sudo mv etc_cloudera-scm-agent_config.ini /etc/cloudera-scm-agent/config.ini",
-                    "tar xzfv scm_prepare_node.tgz"
-                    ).execute();
+                body.append(commands).execute();
     }
 
+    private InputStream generatePackageManagerProxyFile(String aptProxyUrl) {
+        InputStream proxy = Preconditions.checkNotNull(new ResourceUtils(this).getResourceFromUrl("02proxy"), "cannot find 02proxy");
+        try {
+            String template = CharStreams.toString(new InputStreamReader(proxy));
+            String aptProxy = template.replaceFirst("ip-address", aptProxyUrl);
+            log.debug("PackageManagerProxy set up at: " + aptProxy);
+            return new ByteArrayInputStream(aptProxy.getBytes("UTF-8"));
+        } catch (IOException e) {
+            throw Throwables.propagate(e);
+        }
+    }
+    
     protected String getManagerHostname() {
         try {
             return DependentConfiguration.waitForTask(

@@ -53,6 +53,14 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
 
     private FunctionFeed sensorFeed;
 
+//
+//    @Override
+//    public void init() {
+//        super.init();
+//        setConfig(APT_PROXY, getManagementContext().getConfig().getFirst(APT_PROXY.getName()));
+//        setConfig(USE_IP_ADDRESS, getManagementContext().getConfig().getFirst(USE_IP_ADDRESS.getName()));
+//    }
+    
     @Override
     public Class getDriverInterface() {
         return DirectClouderaManagerDriver.class;
@@ -99,10 +107,8 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
                     new PortableTemplateBuilder().osFamily(OsFamily.CENTOS).osVersionMatches("6").os64Bit(true)
                     .minRam(2560));
         } else {
-            flags.put(NovaProperties.AUTO_ALLOCATE_FLOATING_IPS,
-                    System.getProperty(NovaProperties.AUTO_ALLOCATE_FLOATING_IPS, "false"));
-            flags.put(NovaProperties.AUTO_GENERATE_KEYPAIRS,
-                    System.getProperty(NovaProperties.AUTO_GENERATE_KEYPAIRS, "true"));
+            flags.put(JcloudsLocationConfig.TEMPLATE_BUILDER.getName(),
+                    new PortableTemplateBuilder().osFamily(OsFamily.UBUNTU).osVersionMatches("12").os64Bit(true).minRam(2560));
             flags.put(JcloudsLocationConfig.SECURITY_GROUPS.getName(),
                     System.getProperty("jclouds.securityGroups", "universal"));
         }
@@ -117,27 +123,13 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
     @Override
     protected void postDriverStart() {
         super.postDriverStart();
-
-        String cmHost =
-                getAttribute(HOSTNAME);
-                //cmServer.publicHostName
-        // the above can come back being the internal hostname, in some situations
-//        try {
-//            InetAddress addr = NetworkUtils.resolve(cmHost);
-//            if (addr==null) throw new NullPointerException("Cannot resolve "+cmHost);
-//            log.debug("Whirr-reported hostname "+cmHost+" for "+this+" resolved as "+addr);
-//        } catch (Exception e) {
-//            if (GroovyJavaMethods.truth(cmServer.publicIp)) {
-//                log.info("Whirr-reported hostname "+cmHost+" for "+this+" is not resolvable. Reverting to public IP "+cmServer.publicIp);
-//                cmHost = cmServer.publicIp;
-//            } else {
-//                log.warn("Whirr-reported hostname "+cmHost+" for "+this+" is not resolvable. No public IP available. Service may be unreachable.");
-//            }
-//        }
-
+        String cmHost;
+        if(getConfig(ClouderaManagerNode.USE_IP_ADDRESS)) {
+            cmHost = getAttribute(ADDRESS);
+        } else {
+            cmHost = getAttribute(HOSTNAME);
+        }
         try {
-//            authorizeIngress(controller.getCompute().apply(clusterSpec), [cmServer] as Set, clusterSpec,
-//                ["0.0.0.0/0"], 22, 2181, 7180, 7182, 8088, 8888, 50030, 50060, 50070, 50090, 60010, 60020, 60030);
             authorizePing("0.0.0.0/0", Iterables.getFirst(getLocations(), null));
         } catch (Throwable t) {
             log.warn("can't setup firewall/ping: "+t, t);

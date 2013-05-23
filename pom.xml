@@ -72,38 +72,6 @@
             <version>${brooklyn.version}</version>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>com.cloudera.whirr</groupId>
-            <artifactId>whirr-cm</artifactId>
-            <version>${cloudera-whirr-cdh.version}</version>
-            <exclusions>
-              <exclusion>
-                <groupId>org.jclouds</groupId>
-                <artifactId>jclouds-compute</artifactId>
-              </exclusion> 
-              <exclusion>
-                <groupId>org.jclouds</groupId>
-                <artifactId>jclouds-compute</artifactId>
-              </exclusion> 
-              <exclusion>
-                <groupId>org.jclouds.driver</groupId>
-                <artifactId>jclouds-enterprise</artifactId>
-              </exclusion> 
-              <exclusion>
-                <groupId>org.jclouds.driver</groupId>
-                <artifactId>jclouds-jsch</artifactId>
-              </exclusion>
-              <exclusion>
-                <groupId>org.jclouds</groupId>
-                <artifactId>jclouds-allblobstore</artifactId>
-              </exclusion>
-              <exclusion>
-                <groupId>org.jclouds</groupId>
-                <artifactId>jclouds-allblobstore</artifactId>
-              </exclusion>                                                          
-           </exclusions>
-        </dependency>
-        
         
         <dependency>
             <groupId>org.jclouds</groupId>
