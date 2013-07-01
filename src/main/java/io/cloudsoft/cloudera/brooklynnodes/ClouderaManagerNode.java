@@ -36,8 +36,12 @@ public interface ClouderaManagerNode extends Entity {
     public static final BasicConfigKey<String> APT_PROXY = 
         new BasicConfigKey<String>(String.class, "cloudera.manager.apt.proxy.url", "URL of apt proxy");
     
+    public static final ConfigKey<String> YUM_MIRROR = 
+            new BasicConfigKey<String>(String.class, "cloudera.manager.yum.mirror.url", "URL of yum mirror");;
+
     public static final BasicConfigKey<Boolean> USE_IP_ADDRESS = 
         new BasicConfigKey<Boolean>(Boolean.class, "cloudera.manager.use.ip.address", "Force ip address usage instead of hostname", false);
+
 
     public ClouderaCdhNode findEntityForHostId(String hostId);
     

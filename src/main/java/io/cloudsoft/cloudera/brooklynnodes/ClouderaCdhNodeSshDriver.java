@@ -15,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import brooklyn.entity.basic.AbstractSoftwareProcessSshDriver;
+import brooklyn.entity.basic.Attributes;
 import brooklyn.entity.basic.EntityLocal;
 import brooklyn.entity.basic.SoftwareProcess;
 import brooklyn.entity.basic.lifecycle.ScriptHelper;
@@ -55,6 +56,17 @@ public class ClouderaCdhNodeSshDriver extends AbstractSoftwareProcessSshDriver i
 
     @Override
     public void install() {
+        try {
+            String ip = InetAddress.getByName(getHostname()).getHostAddress();
+            newScript("setHostname").body.append(
+                    CommonCommands.sudo("hostname " + ip), 
+                    CommonCommands.sudo("echo " + ip + "  > /etc/hostname"),
+                    CommonCommands.sudo("sed -i \"/^" + ip + "/ d\" /etc/hosts"))
+                    //CommonCommands.sudo("sed -i \"/HOSTNAME=/c\\HOSTNAME=" + ip + "\" /etc/sysconfig/network"))
+                    .execute();
+        } catch (UnknownHostException e) {
+            throw Throwables.propagate(e);
+        }
         getMachine().copyTo(new ResourceUtils(entity).getResourceFromUrl("classpath://scm_prepare_node.tgz"), "/tmp/scm_prepare_node.tgz");
         getMachine().copyTo(new ResourceUtils(entity).getResourceFromUrl("classpath://etc_cloudera-scm-agent_config.ini"), "/tmp/etc_cloudera-scm-agent_config.ini");
 
@@ -102,7 +114,7 @@ public class ClouderaCdhNodeSshDriver extends AbstractSoftwareProcessSshDriver i
     }
     
     @Override
-    public void customize() {
+    public void customize() {       
         log.info(""+this+" waiting for manager hostname and service-up from "+getManager()+" before installing SCM");
         try {
             DependentConfiguration.waitForTask(
@@ -130,10 +142,6 @@ public class ClouderaCdhNodeSshDriver extends AbstractSoftwareProcessSshDriver i
             Time.sleep(15*1000);
             script.updateTaskAndFailOnNonZeroResultCode().execute();
         }
-        
-//        ClouderaRestCaller caller = ClouderaRestCaller.newInstance(getManagerHostname(), 
-//                "admin", 
-//                "admin");
 
         // this entity seems to be picked up automatically at manager when agent starts on CDH node, no need to REST add call
         String ipAddress = null;
@@ -164,12 +172,12 @@ public class ClouderaCdhNodeSshDriver extends AbstractSoftwareProcessSshDriver i
 
         // but we do need to record the _on-box_ hostname as this is what it is knwon at at the manager        
         String hostname = getHostname();
+        log.info("hostname of "+getMachine()+" for "+entity+" is "+ hostname + "(ipaddress= " + ipAddress + ")");
         if (getMachine() instanceof JcloudsSshMachineLocation) {
             // returns on-box hostname
             hostname = ((JcloudsSshMachineLocation)getMachine()).getNode().getHostname();
         }
         entity.setAttribute(ClouderaCdhNode.PRIVATE_HOSTNAME, hostname);
-        
     }
     
     public void waitForManagerPingable() {

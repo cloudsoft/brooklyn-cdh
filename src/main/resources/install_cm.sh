@@ -7,7 +7,7 @@ chmod u+x cloudera-manager-installer.bin
 # Use expect for the install to make it appear interactive
 cat >> install <<END
 #!/usr/bin/expect -f
-set timeout 900
+set timeout 3600
 spawn ./cloudera-manager-installer.bin --ui=stdio --noprompt --noreadme --nooptions --i-agree-to-all-licenses
 expect EOF
 END
