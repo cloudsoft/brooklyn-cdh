@@ -76,39 +76,40 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
     @SuppressWarnings({ "rawtypes", "unchecked" })
     protected Map<String, Object> obtainProvisioningFlags(MachineProvisioningLocation location) {
         Map flags = super.obtainProvisioningFlags(location);
-        if (isJcloudsLocation(location, "google-compute-engine")) {
+        PortableTemplateBuilder portableTemplateBuilder = new PortableTemplateBuilder();
+        if (isJcloudsLocation(location, "aws-ec2")) {
+            portableTemplateBuilder.osFamily(OsFamily.UBUNTU).osVersionMatches("12.04").os64Bit(true).minRam(2500);
+            flags.put(JcloudsLocationConfig.TEMPLATE_BUILDER.getName(), portableTemplateBuilder);
+        } else if (isJcloudsLocation(location, "google-compute-engine")) {
             flags.putAll(GoogleComputeEngineApiMetadata.defaultProperties());
             flags.put("groupId", "brooklyn-cdh");
             flags.put(JcloudsLocationConfig.TEMPLATE_BUILDER.getName(),
-                    new PortableTemplateBuilder().osFamily(OsFamily.CENTOS).osVersionMatches("6").os64Bit(true)
+                    portableTemplateBuilder.osFamily(OsFamily.CENTOS).osVersionMatches("6").os64Bit(true)
                             .locationId("us-central1-a").minRam(2560));
         } else if (isJcloudsLocation(location, "openstack-nova")) {
-            flags.put(CloudLocationConfig.CLOUD_ENDPOINT, "https://cloudfirst.demos.ibm.com/keystone/v2.0");
-            flags.put(JcloudsLocationConfig.TEMPLATE_BUILDER.getName(),
-                    new PortableTemplateBuilder().imageId("RegionOne/eeced716-bb37-4f3b-a3d6-977e17f20b21")
-                    .hardwareId("RegionOne/9"));
-            flags.put(NovaProperties.AUTO_ALLOCATE_FLOATING_IPS, "false");
-            flags.put(NovaProperties.AUTO_GENERATE_KEYPAIRS, "false");
-            Object securityGroups = 
-                    checkNotNull(location.getConfig(JcloudsLocationConfig.SECURITY_GROUPS), "securityGroups must be declared");
-            flags.put(JcloudsLocationConfig.SECURITY_GROUPS.getName(), securityGroups);
-            String keyPair = checkNotNull(location.getConfig(JcloudsLocationConfig.KEY_PAIR), "keypair must be declared");
-            flags.put(JcloudsLocationConfig.KEY_PAIR.getName(), keyPair);
-            String loginUserPrivateKeyFileName = 
-                    checkNotNull(location.getConfig(JcloudsLocationConfig.LOGIN_USER_PRIVATE_KEY_FILE), "login user private key must be declared");
-            flags.put(JcloudsLocationConfig.LOGIN_USER_PRIVATE_KEY_FILE.getName(), loginUserPrivateKeyFileName);
+            String imageId = location.getConfig(JcloudsLocationConfig.IMAGE_ID);
+            if(imageId != null) {
+                portableTemplateBuilder.imageId(imageId);
+            }
+            String hardwareId = location.getConfig(JcloudsLocationConfig.HARDWARE_ID);
+            if(hardwareId != null) {
+                portableTemplateBuilder.hardwareId(hardwareId);
+            }
+            flags.put(JcloudsLocationConfig.TEMPLATE_BUILDER.getName(), portableTemplateBuilder);
         } else if (isJcloudsLocation(location, "rackspace-cloudservers-uk") || 
                 isJcloudsLocation(location, "cloudservers-uk")) {
             // securityGroups are not supported
             flags.put(JcloudsLocationConfig.TEMPLATE_BUILDER.getName(),
-                    new PortableTemplateBuilder().osFamily(OsFamily.CENTOS).osVersionMatches("6").os64Bit(true)
+                    portableTemplateBuilder.osFamily(OsFamily.CENTOS).osVersionMatches("6").os64Bit(true)
                     .minRam(2560));
-        } else {
+        } else if (isJcloudsLocation(location, "bluelock-vcloud-zone01")) {
+            System.setProperty("jclouds.vcloud.timeout.task-complete", 600 * 1000 + "");
+            // this is a constraint for dns name on vcloud (3-15 characters)
+            flags.put("groupId", "brooklyn");
             flags.put(JcloudsLocationConfig.TEMPLATE_BUILDER.getName(),
-                    new PortableTemplateBuilder().osFamily(OsFamily.UBUNTU).osVersionMatches("12").os64Bit(true).minRam(2560));
-            flags.put(JcloudsLocationConfig.SECURITY_GROUPS.getName(),
-                    System.getProperty("jclouds.securityGroups", "universal"));
-        }
+            //    portableTemplateBuilder.osFamily(OsFamily.CENTOS).osVersionMatches("6").os64Bit(true));
+            portableTemplateBuilder.imageId("https://zone01.bluelock.com/api/v1.0/vAppTemplate/vappTemplate-e0717fc0-0b7f-41f7-a275-3e03881d99db"));
+            }
         return flags;
     }
 
