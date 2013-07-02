@@ -54,15 +54,15 @@ public class DirectClouderaManagerSshDriver extends AbstractSoftwareProcessSshDr
 
     @Override
     public void install() {
-        try {
-            String ip = InetAddress.getByName(getHostname()).getHostAddress();
-            newScript("setHostname").body.append(
-                    CommonCommands.sudo("hostname " + ip), 
-                    CommonCommands.sudo("echo " + ip + "  > /etc/hostname"),
-                    CommonCommands.sudo("sed -i \"/^" + ip + "/ d\" /etc/hosts")).execute();
-        } catch (UnknownHostException e) {
-            throw Throwables.propagate(e);
-        }
+//        try {
+//            String ip = InetAddress.getByName(getHostname()).getHostAddress();
+//            newScript("setHostname").body.append(
+//                    CommonCommands.sudo("hostname " + ip), 
+//                    CommonCommands.sudo("echo " + ip + "  > /etc/hostname"),
+//                    CommonCommands.sudo("sed -i \"/^" + ip + "/ d\" /etc/hosts")).execute();
+//        } catch (UnknownHostException e) {
+//            throw Throwables.propagate(e);
+//        }
         
         InputStream installCM = new ResourceUtils(this).getResourceFromUrl("install_cm.sh");
         Preconditions.checkNotNull(installCM, "cannot find install_cm.sh script");
