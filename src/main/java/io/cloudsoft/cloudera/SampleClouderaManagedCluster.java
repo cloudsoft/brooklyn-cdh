@@ -89,7 +89,7 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
 	            public void onItemRemoved(Entity item) { onHostRemoved(item); }
 	        };
 	
-	        subscribe(null, Attributes.HOSTNAME, listener); 
+	        subscribe(null, ClouderaManagerNode.LOCAL_HOSTNAME, listener); 
 	        subscribe(null, Attributes.ADDRESS, listener);
 	        ((ManagementContextInternal)getManagementContext()).addEntitySetListener(entitySetChangeListener);
     	}
@@ -120,7 +120,7 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
 			onHostRemoved(host);
 		}
 		
-		String hostname = host.getAttribute(Attributes.HOSTNAME);
+		String hostname = host.getAttribute(ClouderaManagerNode.LOCAL_HOSTNAME);
 		String ip = host.getAttribute(Attributes.ADDRESS);
 		
 		if (dnsHostsTracked.containsKey(host)) {
