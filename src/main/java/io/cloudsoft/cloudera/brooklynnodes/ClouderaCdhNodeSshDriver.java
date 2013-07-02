@@ -56,17 +56,18 @@ public class ClouderaCdhNodeSshDriver extends AbstractSoftwareProcessSshDriver i
 
     @Override
     public void install() {
-        try {
-            String ip = InetAddress.getByName(getHostname()).getHostAddress();
-            newScript("setHostname").body.append(
-                    CommonCommands.sudo("hostname " + ip), 
-                    CommonCommands.sudo("echo " + ip + "  > /etc/hostname"),
-                    CommonCommands.sudo("sed -i \"/^" + ip + "/ d\" /etc/hosts"))
-                    //CommonCommands.sudo("sed -i \"/HOSTNAME=/c\\HOSTNAME=" + ip + "\" /etc/sysconfig/network"))
-                    .execute();
-        } catch (UnknownHostException e) {
-            throw Throwables.propagate(e);
-        }
+//        try {
+//            String ip = InetAddress.getByName(getHostname()).getHostAddress();
+//            newScript("setHostname").body.append(
+//                    CommonCommands.sudo("hostname " + ip), 
+//                    CommonCommands.sudo("echo " + ip + "  > /etc/hostname"),
+//                    CommonCommands.sudo("sed -i \"/^" + ip + "/ d\" /etc/hosts"))
+//                    //CommonCommands.sudo("sed -i \"/HOSTNAME=/c\\HOSTNAME=" + ip + "\" /etc/sysconfig/network"))
+//                    .execute();
+//        } catch (UnknownHostException e) {
+//            throw Throwables.propagate(e);
+//        }
+    	
         getMachine().copyTo(new ResourceUtils(entity).getResourceFromUrl("classpath://scm_prepare_node.tgz"), "/tmp/scm_prepare_node.tgz");
         getMachine().copyTo(new ResourceUtils(entity).getResourceFromUrl("classpath://etc_cloudera-scm-agent_config.ini"), "/tmp/etc_cloudera-scm-agent_config.ini");
 
