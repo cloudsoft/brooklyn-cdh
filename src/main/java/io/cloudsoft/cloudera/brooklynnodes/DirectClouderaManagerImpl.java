@@ -1,6 +1,5 @@
 package io.cloudsoft.cloudera.brooklynnodes;
 
-import static com.google.common.base.Preconditions.checkNotNull;
 import static io.cloudsoft.cloudera.brooklynnodes.ClouderaManagerNode.log;
 import io.cloudsoft.cloudera.rest.ClouderaRestCaller;
 
@@ -23,7 +22,6 @@ import org.jclouds.ec2.domain.IpProtocol;
 import org.jclouds.ec2.domain.Reservation;
 import org.jclouds.ec2.domain.RunningInstance;
 import org.jclouds.googlecomputeengine.GoogleComputeEngineApiMetadata;
-import org.jclouds.openstack.nova.v2_0.config.NovaProperties;
 
 import brooklyn.config.render.RendererHints;
 import brooklyn.entity.Entity;
@@ -32,7 +30,6 @@ import brooklyn.event.feed.function.FunctionFeed;
 import brooklyn.event.feed.function.FunctionPollConfig;
 import brooklyn.location.Location;
 import brooklyn.location.MachineProvisioningLocation;
-import brooklyn.location.cloud.CloudLocationConfig;
 import brooklyn.location.jclouds.JcloudsLocation;
 import brooklyn.location.jclouds.JcloudsLocationConfig;
 import brooklyn.location.jclouds.JcloudsSshMachineLocation;
@@ -42,7 +39,9 @@ import brooklyn.util.MutableSet;
 import brooklyn.util.exceptions.Exceptions;
 import brooklyn.util.internal.Repeater;
 
+import com.google.common.base.Function;
 import com.google.common.base.Functions;
+import com.google.common.base.Splitter;
 import com.google.common.collect.Iterables;
 
 public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements DirectClouderaManager {
@@ -50,6 +49,9 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
     static {
         RendererHints.register(CLOUDERA_MANAGER_URL, new RendererHints.NamedActionWithUrl("Open"));
     }
+    
+	private FunctionFeed functionFeed;
+
 //
 //    @Override
 //    public void init() {
@@ -152,6 +154,7 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
     }
 
     private ClouderaRestCaller _caller;
+	
     public synchronized ClouderaRestCaller getRestCaller() {
         if (_caller != null) return _caller;
         // TODO use config
@@ -175,8 +178,11 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
         return null;
     }
 
+    @Override
     public void connectSensors() {
-        FunctionFeed feed = FunctionFeed.builder()
+        super.connectSensors();
+        
+        functionFeed = FunctionFeed.builder()
                 .entity(this)
                 .poll(new FunctionPollConfig<Boolean,Boolean>(SERVICE_UP)
                         .period(30, TimeUnit.SECONDS)
@@ -215,6 +221,12 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
                           .onSuccess(Functions.<List>identity())
                         )
                 .build();
+    }
+    
+    @Override
+    protected void disconnectSensors() {
+    	super.disconnectSensors();
+    	if (functionFeed != null) functionFeed.stop();
     }
     
     public static void authorizeIngress(ComputeServiceContext computeServiceContext,

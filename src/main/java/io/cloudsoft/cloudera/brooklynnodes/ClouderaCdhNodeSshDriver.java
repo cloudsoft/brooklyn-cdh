@@ -1,6 +1,7 @@
 package io.cloudsoft.cloudera.brooklynnodes;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -15,7 +16,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import brooklyn.entity.basic.AbstractSoftwareProcessSshDriver;
-import brooklyn.entity.basic.Attributes;
 import brooklyn.entity.basic.EntityLocal;
 import brooklyn.entity.basic.SoftwareProcess;
 import brooklyn.entity.basic.lifecycle.ScriptHelper;
@@ -23,12 +23,15 @@ import brooklyn.event.basic.DependentConfiguration;
 import brooklyn.location.basic.SshMachineLocation;
 import brooklyn.location.jclouds.JcloudsSshMachineLocation;
 import brooklyn.util.ResourceUtils;
+import brooklyn.util.collections.MutableMap;
 import brooklyn.util.exceptions.Exceptions;
 import brooklyn.util.ssh.CommonCommands;
 import brooklyn.util.time.Time;
 
 import com.google.common.base.Preconditions;
+import com.google.common.base.Splitter;
 import com.google.common.base.Throwables;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.io.CharStreams;
 
@@ -68,6 +71,8 @@ public class ClouderaCdhNodeSshDriver extends AbstractSoftwareProcessSshDriver i
 //            throw Throwables.propagate(e);
 //        }
     	
+        entity.setAttribute(ClouderaCdhNode.LOCAL_HOSTNAME, execHostname());
+
         getMachine().copyTo(new ResourceUtils(entity).getResourceFromUrl("classpath://scm_prepare_node.tgz"), "/tmp/scm_prepare_node.tgz");
         getMachine().copyTo(new ResourceUtils(entity).getResourceFromUrl("classpath://etc_cloudera-scm-agent_config.ini"), "/tmp/etc_cloudera-scm-agent_config.ini");
 
@@ -208,4 +213,25 @@ public class ClouderaCdhNodeSshDriver extends AbstractSoftwareProcessSshDriver i
         return "SshDriver["+entity+"]";
     }
 
+    // TODO Move up to a super-type
+    private String execHostname() {
+        if (log.isTraceEnabled()) log.trace("Retrieve `hostname` via ssh for {}", this);
+        String command = "echo hostname=`hostname`";
+        ByteArrayOutputStream stdout = new ByteArrayOutputStream();
+        ByteArrayOutputStream stderr = new ByteArrayOutputStream();
+
+        int exitStatus = execute(MutableMap.of("out", stdout, "err", stderr), ImmutableList.of(command), "getHostname");
+		String stdouts = new String(stdout.toByteArray());
+		String stderrs = new String(stderr.toByteArray());
+		
+		Iterable<String> lines = Splitter.on("\n").split(stdouts);
+		for (String line : lines) {
+			if (line.contains("hostname=") && !line.contains("`hostname`")) {
+				return line.substring(line.indexOf("hostname=")+"hostname=".length());
+			}
+		}
+		
+		log.info("No hostname found for {} (got {}; {})", new Object[] {this, stdouts, stderrs});
+		return null;
+    }
 }
