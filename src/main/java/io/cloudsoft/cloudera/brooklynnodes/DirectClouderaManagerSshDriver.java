@@ -69,7 +69,7 @@ public class DirectClouderaManagerSshDriver extends AbstractSoftwareProcessSshDr
 //            throw Throwables.propagate(e);
 //        }
         
-    	setSelinuxPermissive();
+    	setSelinuxDisabled();
         entity.setAttribute(DirectClouderaManager.LOCAL_HOSTNAME, execHostname());
 
         InputStream installCM = new ResourceUtils(this).getResourceFromUrl("install_cm.sh");
@@ -201,11 +201,11 @@ public class DirectClouderaManagerSshDriver extends AbstractSoftwareProcessSshDr
     }
     
     // TODO Move up to CommonCommands
-    private void setSelinuxPermissive() {
-		newScript("setSelinuxPermissive")
+    private void setSelinuxDisabled() {
+		newScript("setSelinuxDisabled")
 				.body.append(
-						CommonCommands.sudo("sed -i \"s/SELINUX=enforcing/SELINUX=permissive/\" /etc/selinux/config"),
-						CommonCommands.sudo("setenforce 0"))
+						CommonCommands.sudo("sed -i \"s/SELINUX=enforcing/SELINUX=disabled/\" /etc/selinux/config"),
+						CommonCommands.sudo("reboot"))
 				.execute();
     }
 }

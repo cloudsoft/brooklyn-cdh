@@ -71,7 +71,7 @@ public class ClouderaCdhNodeSshDriver extends AbstractSoftwareProcessSshDriver i
 //            throw Throwables.propagate(e);
 //        }
     	
-    	setSelinuxPermissive();
+    	setSelinuxDisabled();
         entity.setAttribute(ClouderaCdhNode.LOCAL_HOSTNAME, execHostname());
 
         getMachine().copyTo(new ResourceUtils(entity).getResourceFromUrl("classpath://scm_prepare_node.tgz"), "/tmp/scm_prepare_node.tgz");
@@ -237,11 +237,11 @@ public class ClouderaCdhNodeSshDriver extends AbstractSoftwareProcessSshDriver i
     }
 
     // TODO Move up to CommonCommands
-    private void setSelinuxPermissive() {
-		newScript("setSelinuxPermissive")
+    private void setSelinuxDisabled() {
+		newScript("setSelinuxDisabled")
 				.body.append(
-						CommonCommands.sudo("sed -i \"s/SELINUX=enforcing/SELINUX=permissive/\" /etc/selinux/config"),
-						CommonCommands.sudo("setenforce 0"))
+						CommonCommands.sudo("sed -i \"s/SELINUX=enforcing/SELINUX=disabled/\" /etc/selinux/config"),
+						CommonCommands.sudo("reboot"))
 				.execute();
     }
 }
