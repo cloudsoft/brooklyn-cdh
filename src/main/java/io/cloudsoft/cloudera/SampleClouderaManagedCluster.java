@@ -124,7 +124,7 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
     	for (Location loc : locations) {
     		if (loc instanceof VCloudDirectorLocation) {
     			Integer cpuCount = getConfig(CPU_COUNT);
-    			Double memorySize = getConfig(MEMORY_SIZE_MB);
+    			Long memorySize = getConfig(MEMORY_SIZE_MB);
     			if (cpuCount != null) ((Configurable)loc).setConfig(VCloudDirectorLocation.CPU_COUNT, cpuCount);
 				if (memorySize != null) ((Configurable)loc).setConfig(VCloudDirectorLocation.MEMORY_SIZE_MB, memorySize);
     		}
