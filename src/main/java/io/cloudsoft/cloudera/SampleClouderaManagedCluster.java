@@ -15,6 +15,7 @@ import io.cloudsoft.cloudera.builders.MapReduceTemplate;
 import io.cloudsoft.cloudera.builders.ZookeeperTemplate;
 import io.cloudsoft.cloudera.rest.RestDataObjects.HdfsRoleType;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -34,9 +35,12 @@ import brooklyn.entity.dns.geoscaling.GeoscalingDnsService;
 import brooklyn.entity.group.DynamicCluster;
 import brooklyn.entity.proxying.BasicEntitySpec;
 import brooklyn.entity.proxying.EntitySpecs;
+import brooklyn.entity.trait.Configurable;
 import brooklyn.event.SensorEvent;
 import brooklyn.event.SensorEventListener;
 import brooklyn.launcher.BrooklynLauncher;
+import brooklyn.location.Location;
+import brooklyn.location.vmware.vcloud.director.VCloudDirectorLocation;
 import brooklyn.management.internal.CollectionChangeListener;
 import brooklyn.management.internal.ManagementContextInternal;
 import brooklyn.util.CommandLineUtil;
@@ -107,7 +111,7 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
                                 "factory",
                                 ClouderaCdhNodeImpl.newFactory()
                                         .setConfig(ClouderaCdhNode.MANAGER, clouderaManagerNode))
-                        .configure("initialSize", 4)));
+                        .configure("initialSize", getConfig(CLUSTER_SIZE))));
 
         services = (AllServices) addChild(getEntityManager().createEntity(
                 BasicEntitySpec.newInstance(AllServices.class).displayName("Cloudera Services")));
@@ -115,6 +119,19 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
                 ClouderaManagerNode.CLOUDERA_MANAGER_URL));
     }
 
+    @Override
+    public void start(Collection<? extends Location> locations) {
+    	for (Location loc : locations) {
+    		if (loc instanceof VCloudDirectorLocation) {
+    			Integer cpuCount = getConfig(CPU_COUNT);
+    			Double memorySize = getConfig(MEMORY_SIZE_MB);
+    			if (cpuCount != null) ((Configurable)loc).setConfig(VCloudDirectorLocation.CPU_COUNT, cpuCount);
+				if (memorySize != null) ((Configurable)loc).setConfig(VCloudDirectorLocation.MEMORY_SIZE_MB, memorySize);
+    		}
+    	}
+    	super.start(locations);
+    }
+    
 	private void onHostChanged(Entity host) {
 		if (!Entities.isManaged(host)) {
 			onHostRemoved(host);
