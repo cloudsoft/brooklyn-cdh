@@ -21,7 +21,7 @@ public interface SampleClouderaManagedClusterInterface extends StartableApplicat
     public static final ConfigKey<Integer> CPU_COUNT = VCloudDirectorLocationConfig.CPU_COUNT;
 
     @CatalogConfig(label="Memory (MB)")
-    public static final ConfigKey<Double> MEMORY_SIZE_MB = VCloudDirectorLocationConfig.MEMORY_SIZE_MB;
+    public static final ConfigKey<Long> MEMORY_SIZE_MB = VCloudDirectorLocationConfig.MEMORY_SIZE_MB;
 
     public static final AttributeSensor<String> CLOUDERA_MANAGER_URL = ClouderaManagerNode.CLOUDERA_MANAGER_URL;
     
