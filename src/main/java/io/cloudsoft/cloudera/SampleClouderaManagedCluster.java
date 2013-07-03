@@ -1,6 +1,5 @@
 package io.cloudsoft.cloudera;
 
-import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.collect.Iterables.getOnlyElement;
 import io.cloudsoft.cloudera.brooklynnodes.AllServices;
 import io.cloudsoft.cloudera.brooklynnodes.ClouderaCdhNode;
@@ -17,37 +16,29 @@ import io.cloudsoft.cloudera.rest.RestDataObjects.HdfsRoleType;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import brooklyn.catalog.Catalog;
-import brooklyn.config.StringConfigMap;
 import brooklyn.enricher.basic.SensorPropagatingEnricher;
 import brooklyn.entity.Entity;
 import brooklyn.entity.basic.AbstractApplication;
-import brooklyn.entity.basic.Attributes;
-import brooklyn.entity.basic.BasicGroup;
 import brooklyn.entity.basic.Entities;
-import brooklyn.entity.dns.geoscaling.GeoscalingDnsService;
 import brooklyn.entity.group.DynamicCluster;
+import brooklyn.entity.network.bind.BindDnsServer;
 import brooklyn.entity.proxying.BasicEntitySpec;
 import brooklyn.entity.proxying.EntitySpecs;
 import brooklyn.entity.trait.Configurable;
-import brooklyn.event.SensorEvent;
-import brooklyn.event.SensorEventListener;
 import brooklyn.launcher.BrooklynLauncher;
 import brooklyn.location.Location;
 import brooklyn.location.vmware.vcloud.director.VCloudDirectorLocation;
-import brooklyn.management.internal.CollectionChangeListener;
-import brooklyn.management.internal.ManagementContextInternal;
 import brooklyn.util.CommandLineUtil;
 
+import com.google.common.base.Predicates;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 
 @Catalog(name = "Cloudera CDH4", description = "Launches Cloudera Distribution for Hadoop Manager with a Cloudera Manager and an initial cluster of 4 CDH nodes (resizable) and default services including HDFS, MapReduce, and HBase", iconUrl = "classpath://io/cloudsoft/cloudera/cloudera.jpg")
 public class SampleClouderaManagedCluster extends AbstractApplication implements SampleClouderaManagedClusterInterface {
@@ -59,8 +50,9 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
     protected Entity admin;
     protected ClouderaManagerNode clouderaManagerNode;
     protected DynamicCluster workerCluster;
-    protected AllServices services;    
-    
+    protected AllServices services;
+    protected BindDnsServer dnsServer;
+
     boolean launchDefaultServices = true;
 
     public StartupGroup getAdmin() {
@@ -74,28 +66,14 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
     public AllServices getServices() {
         return services;
     }
-
-	private BasicGroup dnsGroup;
-	private Map<Entity, GeoscalingDnsService> dnsHostsTracked = Maps.newLinkedHashMap();
     
     @Override
     public void init() {
     	if (getConfig(SETUP_DNS)) {
-	        dnsGroup = addChild(EntitySpecs.spec(BasicGroup.class).displayName("dns-setup"));
-	
-	        SensorEventListener<String> listener = new SensorEventListener<String>() {
-				@Override public void onEvent(SensorEvent<String> event) {
-					onHostChanged(event.getSource());
-				}
-	        };
-	        CollectionChangeListener<Entity> entitySetChangeListener = new CollectionChangeListener<Entity>() {
-	            public void onItemAdded(Entity item) { onHostChanged(item); }
-	            public void onItemRemoved(Entity item) { onHostRemoved(item); }
-	        };
-	
-	        subscribe(null, ClouderaManagerNode.LOCAL_HOSTNAME, listener); 
-	        subscribe(null, Attributes.ADDRESS, listener);
-	        ((ManagementContextInternal)getManagementContext()).addEntitySetListener(entitySetChangeListener);
+    	    dnsServer = addChild(EntitySpecs.spec(BindDnsServer.class).displayName("dns-server")
+    	            .configure("filter", Predicates.or(Predicates.instanceOf(ClouderaManagerNode.class), Predicates.instanceOf(ClouderaCdhNode.class)))
+    	            .configure("domainName", "cloudera")
+    	            .configure("hostnameSensor", ClouderaManagerNode.LOCAL_HOSTNAME));
     	}
     	
         admin = addChild(EntitySpecs.spec(StartupGroup.class).displayName("Cloudera Hosts and Admin"));
@@ -131,52 +109,6 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
     	}
     	super.start(locations);
     }
-    
-	private void onHostChanged(Entity host) {
-		if (!Entities.isManaged(host)) {
-			onHostRemoved(host);
-		}
-		
-		String hostname = host.getAttribute(ClouderaManagerNode.LOCAL_HOSTNAME);
-		String ip = host.getAttribute(Attributes.ADDRESS);
-		
-		if (dnsHostsTracked.containsKey(host)) {
-			return; // ignore; already have this
-		}
-		if (hostname != null && ip != null) {
-			onHostAdded(host, hostname, ip);
-		}
-	}
-	
-	private void onHostAdded(Entity host, String hostname, String ip) {
-		StringConfigMap config = getManagementContext().getConfig();
-				
-        // Unfortunately we need to give it a group with the entity as a member
-        BasicGroup hostgroup = dnsGroup.addChild(EntitySpecs.spec(BasicGroup.class).displayName("group-"+host));
-        hostgroup.addMember(host);
-        Entities.manage(hostgroup);
-
-        GeoscalingDnsService dns = dnsGroup.addChild(EntitySpecs.spec(GeoscalingDnsService.class)
-                .displayName("GeoScaling DNS")
-                .configure(GeoscalingDnsService.RANDOMIZE_SUBDOMAIN_NAME, false)
-                .configure(GeoscalingDnsService.GEOSCALING_USERNAME, checkNotNull(config.getFirst("brooklyn.geoscaling.username"), "username"))
-                .configure(GeoscalingDnsService.GEOSCALING_PASSWORD, checkNotNull(config.getFirst("brooklyn.geoscaling.password"), "password"))
-                .configure(GeoscalingDnsService.GEOSCALING_PRIMARY_DOMAIN_NAME, checkNotNull(config.getFirst("brooklyn.geoscaling.primaryDomain"), "primaryDomain"))
-                .configure(GeoscalingDnsService.GEOSCALING_SMART_SUBDOMAIN_NAME, hostname)
-        		.configure(GeoscalingDnsService.INCLUDE_HOMELESS_ENTITIES, true)
-        		.configure(GeoscalingDnsService.USE_HOSTNAMES, false));
-        dns.setTargetEntityProvider(hostgroup);
-        Entities.manage(dns);
-        
-        dnsHostsTracked.put(host, dns);
-	}
-	
-	private void onHostRemoved(Entity host) {
-		GeoscalingDnsService dns = dnsHostsTracked.remove(host);
-		if (dns != null) {
-			Entities.unmanage(dns);
-		}
-	}
 	
     @Override
     public void launchDefaultServices(boolean enabled) {
