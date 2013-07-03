@@ -35,6 +35,8 @@ public interface ClouderaCdhNode extends SoftwareProcess {
 
     public static final Effector<String> COLLECT_METRICS = new MethodEffector<String>(ClouderaCdhNode.class, "collectMetrics");
      
+    public static final AttributeSensor<String> LOCAL_HOSTNAME = ClouderaManagerNode.LOCAL_HOSTNAME;
+    
     /**
      * Start the entity in the given collection of locations.
      */
