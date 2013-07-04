@@ -14,6 +14,7 @@ import io.cloudsoft.cloudera.builders.MapReduceTemplate;
 import io.cloudsoft.cloudera.builders.ZookeeperTemplate;
 import io.cloudsoft.cloudera.rest.RestDataObjects.HdfsRoleType;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -26,11 +27,16 @@ import brooklyn.entity.Entity;
 import brooklyn.entity.basic.AbstractApplication;
 import brooklyn.entity.basic.Entities;
 import brooklyn.entity.group.DynamicCluster;
+import brooklyn.entity.network.bind.BindDnsServer;
 import brooklyn.entity.proxying.BasicEntitySpec;
 import brooklyn.entity.proxying.EntitySpecs;
+import brooklyn.entity.trait.Configurable;
 import brooklyn.launcher.BrooklynLauncher;
+import brooklyn.location.Location;
+import brooklyn.location.vmware.vcloud.director.VCloudDirectorLocation;
 import brooklyn.util.CommandLineUtil;
 
+import com.google.common.base.Predicates;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.Lists;
 
@@ -44,8 +50,9 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
     protected Entity admin;
     protected ClouderaManagerNode clouderaManagerNode;
     protected DynamicCluster workerCluster;
-    protected AllServices services;    
-    
+    protected AllServices services;
+    protected BindDnsServer dnsServer;
+
     boolean launchDefaultServices = true;
 
     public StartupGroup getAdmin() {
@@ -59,9 +66,16 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
     public AllServices getServices() {
         return services;
     }
-
+    
     @Override
     public void init() {
+    	if (getConfig(SETUP_DNS)) {
+    	    dnsServer = addChild(EntitySpecs.spec(BindDnsServer.class).displayName("dns-server")
+    	            .configure("filter", Predicates.or(Predicates.instanceOf(ClouderaManagerNode.class), Predicates.instanceOf(ClouderaCdhNode.class)))
+    	            .configure("domainName", "cloudera")
+    	            .configure("hostnameSensor", ClouderaManagerNode.LOCAL_HOSTNAME));
+    	}
+    	
         admin = addChild(EntitySpecs.spec(StartupGroup.class).displayName("Cloudera Hosts and Admin"));
 
         clouderaManagerNode = (ClouderaManagerNode) admin.addChild(getEntityManager().createEntity(
@@ -75,7 +89,7 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
                                 "factory",
                                 ClouderaCdhNodeImpl.newFactory()
                                         .setConfig(ClouderaCdhNode.MANAGER, clouderaManagerNode))
-                        .configure("initialSize", 4)));
+                        .configure("initialSize", getConfig(CLUSTER_SIZE))));
 
         services = (AllServices) addChild(getEntityManager().createEntity(
                 BasicEntitySpec.newInstance(AllServices.class).displayName("Cloudera Services")));
@@ -83,6 +97,19 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
                 ClouderaManagerNode.CLOUDERA_MANAGER_URL));
     }
 
+    @Override
+    public void start(Collection<? extends Location> locations) {
+    	for (Location loc : locations) {
+    		if (loc instanceof VCloudDirectorLocation) {
+    			Integer cpuCount = getConfig(CPU_COUNT);
+    			Long memorySize = getConfig(MEMORY_SIZE_MB);
+    			if (cpuCount != null) ((Configurable)loc).setConfig(VCloudDirectorLocation.CPU_COUNT, cpuCount);
+				if (memorySize != null) ((Configurable)loc).setConfig(VCloudDirectorLocation.MEMORY_SIZE_MB, memorySize);
+    		}
+    	}
+    	super.start(locations);
+    }
+	
     @Override
     public void launchDefaultServices(boolean enabled) {
         launchDefaultServices = enabled;

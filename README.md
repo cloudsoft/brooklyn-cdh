@@ -8,6 +8,7 @@ Brooklyn deployment and management of Cloudera Hadoop and Manager clusters.
 
 You must have the following software installed and compiled (`mvn clean install`):
 
+* `https://github.com/cloudsoft/ibm-smartcloud.git`: for more details [README](https://github.com/cloudsoft/ibm-smartcloud/blob/master/README.md).
 * `https://github.com/brooklyncentral/brooklyn`: currently snapshot is required, and 
   below we assume that `brooklyn` is in your path 
 

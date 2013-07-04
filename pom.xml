@@ -14,7 +14,10 @@
 
         <groovy.version>1.8.6</groovy.version>
         <testng.version>6.3.1</testng.version>
-        <brooklyn.version>0.5.0-rc.2</brooklyn.version>
+        <brooklyn.version>0.6.0-SNAPSHOT</brooklyn.version>
+        <jclouds.version>1.6.0-rc.5</jclouds.version>
+        <slf4j.version>1.6.6</slf4j.version>
+        <logback.version>1.0.7</logback.version>
         <cloudera-whirr-cdh.version>0.8.0-cdh4.1.3</cloudera-whirr-cdh.version>
     </properties>
 
@@ -23,17 +26,62 @@
             <groupId>io.brooklyn</groupId>
             <artifactId>brooklyn-all</artifactId>
             <version>${brooklyn.version}</version>
-        </dependency>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.jclouds</groupId>
+                    <artifactId>jclouds-allcompute</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>io.brooklyn</groupId>
+                    <artifactId>brooklyn-systems-hadoop</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.jclouds.driver</groupId>
+                    <artifactId>jclouds-sshj</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>       
         <dependency>
             <groupId>io.brooklyn</groupId>
             <artifactId>brooklyn-test-support</artifactId>
             <version>${brooklyn.version}</version>
             <scope>test</scope>
         </dependency>
+        
         <dependency>
-            <groupId>com.cloudera.whirr</groupId>
-            <artifactId>whirr-cm</artifactId>
-            <version>${cloudera-whirr-cdh.version}</version>
+            <groupId>org.jclouds</groupId>
+            <artifactId>jclouds-allcompute</artifactId>
+            <version>${jclouds.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jclouds.labs</groupId>
+            <artifactId>google-compute-engine</artifactId>
+            <version>${jclouds.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.jclouds</groupId>
+                    <artifactId>jclouds-core</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.jclouds</groupId>
+                    <artifactId>jclouds-compute</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.jclouds.driver</groupId>
+            <artifactId>jclouds-sshj</artifactId>
+            <version>${jclouds.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.cloudsoft.amp.locations</groupId>
+            <artifactId>ibm-smartcloud</artifactId>
+            <version>${brooklyn.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.cloudsoft.amp.locations</groupId>
+            <artifactId>vcloud-director</artifactId>
+            <version>${brooklyn.version}</version>
         </dependency>
         <dependency>
             <!-- web testing -->

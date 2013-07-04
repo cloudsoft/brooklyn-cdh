@@ -1,8 +1,16 @@
 package io.cloudsoft.cloudera.brooklynnodes;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.List;
 import java.util.Set;
+
+import joptsimple.internal.Strings;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,16 +18,22 @@ import org.slf4j.LoggerFactory;
 import brooklyn.entity.basic.AbstractSoftwareProcessSshDriver;
 import brooklyn.entity.basic.EntityLocal;
 import brooklyn.entity.basic.SoftwareProcess;
-import brooklyn.entity.basic.lifecycle.CommonCommands;
 import brooklyn.entity.basic.lifecycle.ScriptHelper;
 import brooklyn.event.basic.DependentConfiguration;
 import brooklyn.location.basic.SshMachineLocation;
 import brooklyn.location.jclouds.JcloudsSshMachineLocation;
 import brooklyn.util.ResourceUtils;
-import brooklyn.util.Time;
+import brooklyn.util.collections.MutableMap;
 import brooklyn.util.exceptions.Exceptions;
+import brooklyn.util.ssh.CommonCommands;
+import brooklyn.util.time.Time;
 
 import com.google.common.base.Preconditions;
+import com.google.common.base.Splitter;
+import com.google.common.base.Throwables;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
+import com.google.common.io.CharStreams;
 
 public class ClouderaCdhNodeSshDriver extends AbstractSoftwareProcessSshDriver implements ClouderaCdhNodeDriver {
 
@@ -45,20 +59,57 @@ public class ClouderaCdhNodeSshDriver extends AbstractSoftwareProcessSshDriver i
 
     @Override
     public void install() {
+//        try {
+//            String ip = InetAddress.getByName(getHostname()).getHostAddress();
+//            newScript("setHostname").body.append(
+//                    CommonCommands.sudo("hostname " + ip), 
+//                    CommonCommands.sudo("echo " + ip + "  > /etc/hostname"),
+//                    CommonCommands.sudo("sed -i \"/^" + ip + "/ d\" /etc/hosts"))
+//                    //CommonCommands.sudo("sed -i \"/HOSTNAME=/c\\HOSTNAME=" + ip + "\" /etc/sysconfig/network"))
+//                    .execute();
+//        } catch (UnknownHostException e) {
+//            throw Throwables.propagate(e);
+//        }
+    	
+    	setSelinuxDisabled();
+        entity.setAttribute(ClouderaCdhNode.LOCAL_HOSTNAME, execHostname());
+
         getMachine().copyTo(new ResourceUtils(entity).getResourceFromUrl("classpath://scm_prepare_node.tgz"), "/tmp/scm_prepare_node.tgz");
         getMachine().copyTo(new ResourceUtils(entity).getResourceFromUrl("classpath://etc_cloudera-scm-agent_config.ini"), "/tmp/etc_cloudera-scm-agent_config.ini");
 
+        String aptProxyUrl = getLocation().getConfig(ClouderaCdhNode.APT_PROXY);
+        if(!Strings.isNullOrEmpty(aptProxyUrl)) {
+            InputStream proxy = generatePackageManagerProxyFile(aptProxyUrl);
+            getMachine().copyTo(proxy, "/tmp/02proxy");
+            newScript(INSTALLING+":setAptProxy")
+                .body.append(CommonCommands.sudo("mv /tmp/02proxy /etc/apt/apt.conf.d/02proxy"))
+                .execute();
+        }
+        
+        List<String> commands = Lists.newArrayList();
+        commands.add(CommonCommands.INSTALL_TAR);
+        commands.add("cd /tmp");
+        commands.add("sudo mkdir /etc/cloudera-scm-agent/");
+        commands.add("sudo mv etc_cloudera-scm-agent_config.ini /etc/cloudera-scm-agent/config.ini");
+        commands.add("tar xzfv scm_prepare_node.tgz");
+        
         newScript(INSTALLING).
                 updateTaskAndFailOnNonZeroResultCode().
-                body.append(
-                    CommonCommands.INSTALL_TAR,
-                    "cd /tmp", 
-                    "sudo mkdir /etc/cloudera-scm-agent/",
-                    "sudo mv etc_cloudera-scm-agent_config.ini /etc/cloudera-scm-agent/config.ini",
-                    "tar xzfv scm_prepare_node.tgz"
-                    ).execute();
+                body.append(commands).execute();
     }
 
+    private InputStream generatePackageManagerProxyFile(String aptProxyUrl) {
+        InputStream proxy = Preconditions.checkNotNull(new ResourceUtils(this).getResourceFromUrl("02proxy"), "cannot find 02proxy");
+        try {
+            String template = CharStreams.toString(new InputStreamReader(proxy));
+            String aptProxy = template.replaceFirst("ip-address", aptProxyUrl);
+            log.debug("PackageManagerProxy set up at: " + aptProxy);
+            return new ByteArrayInputStream(aptProxy.getBytes("UTF-8"));
+        } catch (IOException e) {
+            throw Throwables.propagate(e);
+        }
+    }
+    
     protected String getManagerHostname() {
         try {
             return DependentConfiguration.waitForTask(
@@ -70,7 +121,7 @@ public class ClouderaCdhNodeSshDriver extends AbstractSoftwareProcessSshDriver i
     }
     
     @Override
-    public void customize() {
+    public void customize() {       
         log.info(""+this+" waiting for manager hostname and service-up from "+getManager()+" before installing SCM");
         try {
             DependentConfiguration.waitForTask(
@@ -98,10 +149,6 @@ public class ClouderaCdhNodeSshDriver extends AbstractSoftwareProcessSshDriver i
             Time.sleep(15*1000);
             script.updateTaskAndFailOnNonZeroResultCode().execute();
         }
-        
-//        ClouderaRestCaller caller = ClouderaRestCaller.newInstance(getManagerHostname(), 
-//                "admin", 
-//                "admin");
 
         // this entity seems to be picked up automatically at manager when agent starts on CDH node, no need to REST add call
         String ipAddress = null;
@@ -132,12 +179,12 @@ public class ClouderaCdhNodeSshDriver extends AbstractSoftwareProcessSshDriver i
 
         // but we do need to record the _on-box_ hostname as this is what it is knwon at at the manager        
         String hostname = getHostname();
+        log.info("hostname of "+getMachine()+" for "+entity+" is "+ hostname + "(ipaddress= " + ipAddress + ")");
         if (getMachine() instanceof JcloudsSshMachineLocation) {
             // returns on-box hostname
             hostname = ((JcloudsSshMachineLocation)getMachine()).getNode().getHostname();
         }
         entity.setAttribute(ClouderaCdhNode.PRIVATE_HOSTNAME, hostname);
-        
     }
     
     public void waitForManagerPingable() {
@@ -161,5 +208,40 @@ public class ClouderaCdhNodeSshDriver extends AbstractSoftwareProcessSshDriver i
     public void launch() {
         // nothing needed here, services get launched separately
     }
+    
+    @Override
+    public String toString() {
+        return "SshDriver["+entity+"]";
+    }
 
+    // TODO Move up to a super-type
+    private String execHostname() {
+        if (log.isTraceEnabled()) log.trace("Retrieve `hostname` via ssh for {}", this);
+        String command = "echo hostname=`hostname`";
+        ByteArrayOutputStream stdout = new ByteArrayOutputStream();
+        ByteArrayOutputStream stderr = new ByteArrayOutputStream();
+
+        int exitStatus = execute(MutableMap.of("out", stdout, "err", stderr), ImmutableList.of(command), "getHostname");
+		String stdouts = new String(stdout.toByteArray());
+		String stderrs = new String(stderr.toByteArray());
+		
+		Iterable<String> lines = Splitter.on("\n").split(stdouts);
+		for (String line : lines) {
+			if (line.contains("hostname=") && !line.contains("`hostname`")) {
+				return line.substring(line.indexOf("hostname=")+"hostname=".length());
+			}
+		}
+		
+		log.info("No hostname found for {} (got {}; {})", new Object[] {this, stdouts, stderrs});
+		return null;
+    }
+
+    // TODO Move up to CommonCommands
+    private void setSelinuxDisabled() {
+		newScript("setSelinuxDisabled")
+				.body.append(
+						CommonCommands.sudo("sed -i \"s/SELINUX=enforcing/SELINUX=disabled/\" /etc/selinux/config"),
+						CommonCommands.sudo("reboot"))
+				.execute();
+    }
 }
