@@ -12,30 +12,36 @@ You can then access the management context in your browser, typically on  localh
 To run, you'll need to specify credentials for your preferred cloud.  This can be done 
 in `~/.brooklyn/brooklyn.properties`:
 
-    brooklyn.jclouds.aws-ec2.identity=AKXXXXXXXXXXXXXXXXXX
-    brooklyn.jclouds.aws-ec2.credential=secret01xxxxxxxxxxxxxxxxxxxxxxxxxxx
+    brooklyn.jclouds.aws-ec2.identity=AAAAAAAAAAAAAAAAAAAA
+    brooklyn.jclouds.aws-ec2.credential=sssssssssssssssssssssssssssssssssss
 
 Alternatively these can be set as shell environment parameters or JVM system properties.
 
 Many other clouds are supported also, as well as pre-existing machines ("bring your own nodes"),
 custom endpoints for private clouds, and specifying custom keys and passphrases.
+
 For more information see:
 
     https://github.com/brooklyncentral/brooklyn/blob/master/docs/use/guide/defining-applications/common-usage.md#off-the-shelf-locations
-
 
 ### Run
 
 Usage:
 
-    ./start.sh [--port 8081+] location
+    ./start.sh [ location [ --port 8081+ ] ]
 
-Where location might be `aws-ec2:us-east-1` (the default), `gogrid`, `openstack:endpoint`, etc.
+Where location might be `aws-ec2:us-east-1`, `gogrid`, `openstack:endpoint`, etc. The default for the `start.sh` script
+is to use a named location called _cloudera_, configured in the `brooklyn.properties` file. For example:
+
+    brooklyn.location.named.cloudera=jclouds:aws-ec2:eu-west-1
+    brooklyn.location.named.cloudera.identity=AAAAAAAAAAAAAAAAAAAA
+    brooklyn.location.named.cloudera.credential=ssssssssssssssssssssssssssssssssssssssss
+    brooklyn.location.named.cloudera.imageId = eu-west-1/ami-ce7b6fba
+    brooklyn.location.named.cloudera.user=ubuntu
 
 After about 15 minutes, it should print out the URL of the Cloudera Manager node.
 In the meantime you can follow the progress in the Brooklyn console, 
 usually at localhost:8081 (unless a specific port is given).
-
 
 ### More About Brooklyn
 
