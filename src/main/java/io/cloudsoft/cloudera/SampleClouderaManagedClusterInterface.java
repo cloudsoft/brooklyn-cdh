@@ -12,6 +12,7 @@ import brooklyn.location.vmware.vcloud.director.VCloudDirectorLocationConfig;
 @ImplementedBy(SampleClouderaManagedCluster.class)
 public interface SampleClouderaManagedClusterInterface extends StartableApplication {
 
+    @CatalogConfig(label="Setup Internal DNS")
     public static final ConfigKey<Boolean> SETUP_DNS = ConfigKeys.newBooleanConfigKey("cdh.setupDns", "Whether to set up internal DNS", true);
 
     @CatalogConfig(label="Cluster Size")
