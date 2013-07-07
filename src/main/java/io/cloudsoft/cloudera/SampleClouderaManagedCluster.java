@@ -73,6 +73,7 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
     	    dnsServer = addChild(EntitySpecs.spec(BindDnsServer.class).displayName("dns-server")
     	            .configure("filter", Predicates.or(Predicates.instanceOf(ClouderaManagerNode.class), Predicates.instanceOf(ClouderaCdhNode.class)))
     	            .configure("domainName", "cloudera")
+    	            .configure(BindDnsServer.REPLACE_RESOLV_CONF, true)
     	            .configure("hostnameSensor", ClouderaManagerNode.LOCAL_HOSTNAME));
     	}
     	
