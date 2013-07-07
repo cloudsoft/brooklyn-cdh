@@ -8,6 +8,8 @@ import java.security.cert.X509Certificate;
 import java.util.List;
 import java.util.Map;
 
+import javax.annotation.Nullable;
+
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.auth.AuthScope;
@@ -33,10 +35,13 @@ import brooklyn.entity.basic.ConfigKeys;
 import brooklyn.entity.brooklynnode.BrooklynNode;
 import brooklyn.entity.proxying.EntitySpecs;
 import brooklyn.event.feed.http.HttpPollValue;
+import brooklyn.util.ResourceUtils;
 import brooklyn.util.exceptions.Exceptions;
 
+import com.google.common.base.Function;
 import com.google.common.base.Optional;
 import com.google.common.base.Splitter;
+import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
@@ -91,6 +96,12 @@ public class ClouderaBootstrapLauncher extends AbstractApplication {
     @CatalogConfig(label="vcloud credential")
     public static final ConfigKey<String> VCLOUD_CREDENTIAL = ConfigKeys.newStringConfigKey("cdh.vcloudCredential", "VCloud login credential", null);
 
+    @CatalogConfig(label="catalog.xml")
+    public static final ConfigKey<String> CATALOG_XML_URL = ConfigKeys.newStringConfigKey("cdh.catalogXml", "catalog.xml url", "classpath://io/cloudsoft/bootstrap/catalog.xml");
+
+    @CatalogConfig(label="yum mirror ip")
+    public static final ConfigKey<String> YUM_MIRROR_IP = ConfigKeys.newStringConfigKey("cdh.yumMirrorIp", "yum mirror IP", "172.16.1.102");
+    
     
     private StringConfigMap config;
 
@@ -112,17 +123,8 @@ public class ClouderaBootstrapLauncher extends AbstractApplication {
         String classpathUploads = getConfigOrProperty(CLASSPATH_UPLOADS);
         List<String> classpathUploadsList = ImmutableList.copyOf(Splitter.on(":").split(classpathUploads));
         
-        String catalogContents =
-                "<catalog>" + "\n" +
-                    "<name>Cloudsoft Brooklyn CDH</name>" + "\n" +
-
-                    "<template type=\""+SampleClouderaManagedCluster.class.getName()+"\" name=\"Cloudera CDH4\">" + "\n" +
-                        "<description>Launches Cloudera Distribution for Hadoop Manager with a Cloudera Manager and an initial cluster of 4 CDH nodes" + "\n" +
-                        "(resizable) and default services including HDFS, MapReduce, and HBase</description>" + "\n" +
-                        "<iconUrl>http://blog.scalar.ca/Portals/74388/images/cloudera-desktop-a-new-hadoop-management-tool-2.jpg</iconUrl>" + "\n" +
-                    "</template>" + "\n" +
-                "</catalog>" + "\n";
-
+        String catalogContents = new ResourceUtils(this).getResourceAsString(getConfig(CATALOG_XML_URL));
+        
         // FIXME How to supply yum.mirror.url when don't know what IP will be yet?
         // Should we use attributeWhenReady?
         String propertiesContents = 
@@ -132,7 +134,8 @@ public class ClouderaBootstrapLauncher extends AbstractApplication {
                 "brooklyn.location.named.cloudera.user=root" + "\n" +
                 "brooklyn.location.named.cloudera.endpoint=" + vcloudEndpoint + "\n" +
                 "brooklyn.location.named.cloudera.ssh.reachable.timeout=1200000" + "\n" +
-                "#brooklyn.location.named.cloudera.cloudera.manager.yum.mirror.url=172.16.1.102" + "\n";
+                (Strings.isNullOrEmpty(getConfig(YUM_MIRROR_IP)) ? "#" : "") + 
+                        "brooklyn.location.named.cloudera.cloudera.manager.yum.mirror.url="+getConfig(YUM_MIRROR_IP) + "\n";
 
         brooklynNode = addChild(EntitySpecs.spec(BrooklynNode.class)
                 .configure(BrooklynNode.DISTRO_UPLOAD_URL, brooklynUploadUrl)
@@ -141,7 +144,12 @@ public class ClouderaBootstrapLauncher extends AbstractApplication {
                 .configure(BrooklynNode.MANAGEMENT_PASSWORD, brooklynPassword)
                 .configure(BrooklynNode.BROOKLYN_CATALOG_CONTENTS, catalogContents)
                 .configure(BrooklynNode.BROOKLYN_PROPERTIES_CONTENTS, propertiesContents)
-                .configure(BrooklynNode.CLASSPATH, classpathUploadsList));
+                .configure(BrooklynNode.CLASSPATH, classpathUploadsList)
+                .configure(BrooklynNode.PORT_MAPPER, new Function<Integer,Integer>() {
+                        @Override public Integer apply(@Nullable Integer input) {
+                            // in atos vcloud, there's DNAT to expose port 8081 as 80 (on the same public IP that 22 was exposed on)
+                            return (input == 8081 ? 80 : input);
+                        }}));
     }
     
     // FIXME how to get location id?
