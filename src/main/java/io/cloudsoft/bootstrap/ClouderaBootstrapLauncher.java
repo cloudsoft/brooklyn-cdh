@@ -145,11 +145,12 @@ public class ClouderaBootstrapLauncher extends AbstractApplication {
                 .configure(BrooklynNode.BROOKLYN_CATALOG_CONTENTS, catalogContents)
                 .configure(BrooklynNode.BROOKLYN_PROPERTIES_CONTENTS, propertiesContents)
                 .configure(BrooklynNode.CLASSPATH, classpathUploadsList)
-                .configure(BrooklynNode.PORT_MAPPER, new Function<Integer,Integer>() {
-                        @Override public Integer apply(@Nullable Integer input) {
-                            // in atos vcloud, there's DNAT to expose port 8081 as 80 (on the same public IP that 22 was exposed on)
-                            return (input == 8081 ? 80 : input);
-                        }}));
+//                .configure(BrooklynNode.PORT_MAPPER, new Function<Integer,Integer>() {
+//                        @Override public Integer apply(@Nullable Integer input) {
+//                            // in atos vcloud, there's DNAT to expose port 8081 as 80 (on the same public IP that 22 was exposed on)
+//                            return (input == 8081 ? 80 : input);
+//                        }}));
+                );
     }
     
     // FIXME how to get location id?
