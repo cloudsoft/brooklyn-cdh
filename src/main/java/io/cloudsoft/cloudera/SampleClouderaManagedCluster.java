@@ -94,6 +94,7 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
 
         services = (AllServices) addChild(getEntityManager().createEntity(
                 BasicEntitySpec.newInstance(AllServices.class).displayName("Cloudera Services")));
+        
         addEnricher(SensorPropagatingEnricher.newInstanceListeningTo(clouderaManagerNode,
                 ClouderaManagerNode.CLOUDERA_MANAGER_URL));
     }
@@ -108,7 +109,18 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
 				if (memorySize != null) ((Configurable)loc).setConfig(VCloudDirectorLocation.MEMORY_SIZE_MB, memorySize);
     		}
     	}
+    	
+        Stopwatch stopwatch = new Stopwatch().start();
+
     	super.start(locations);
+    	
+        Entities.dumpInfo(this);
+        
+        log.info("Starting CDH services for {} (startup time so far is {} seconds)", this, stopwatch.elapsedTime(TimeUnit.SECONDS));
+        startServices(true, false);
+        
+        stopwatch.stop(); 
+        log.info("Time to deploy " + locations + ": " + stopwatch.elapsedTime(TimeUnit.SECONDS) + " seconds");
     }
 	
     @Override
@@ -170,9 +182,6 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
         String port = CommandLineUtil.getCommandLineOption(args, "--port", "8081+");
         String location = CommandLineUtil.getCommandLineOption(args, "--location", DEFAULT_LOCATION);
 
-        Stopwatch stopwatch = new Stopwatch();
-        stopwatch.start();
-        log.info("Start time for CDH deployment on '" + location +"'");
         BrooklynLauncher launcher = BrooklynLauncher.newInstance()
                                                     .application(
                                                             EntitySpecs.appSpec(SampleClouderaManagedClusterInterface.class)
@@ -180,12 +189,5 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
                                                     .webconsolePort(port)
                                                     .location(location)
                                                     .start();
-        Entities.dumpInfo(launcher.getApplications());
-        SampleClouderaManagedClusterInterface app = 
-                (SampleClouderaManagedClusterInterface) getOnlyElement(launcher.getApplications());
-        app.startServices(true, false);
-        stopwatch.stop(); 
-        log.info("Time to deploy " + location + ": " + stopwatch.elapsedTime(TimeUnit.SECONDS) + " seconds");
     }
-
 }
