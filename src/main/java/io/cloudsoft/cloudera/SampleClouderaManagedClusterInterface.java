@@ -24,6 +24,10 @@ public interface SampleClouderaManagedClusterInterface extends StartableApplicat
     @CatalogConfig(label="Memory (MB)")
     public static final ConfigKey<Long> MEMORY_SIZE_MB = VCloudDirectorLocationConfig.MEMORY_SIZE_MB;
 
+    @CatalogConfig(label="Secondary disk size (GB)")
+    public static final ConfigKey<Long> SECOND_DISK_SIZE_GB = ConfigKeys.newLongConfigKey("cdg.second.diskSize",
+            "Second disk size (in GB) per VM", 20L);
+
     public static final AttributeSensor<String> CLOUDERA_MANAGER_URL = ClouderaManagerNode.CLOUDERA_MANAGER_URL;
     
     public void launchDefaultServices(boolean enabled);

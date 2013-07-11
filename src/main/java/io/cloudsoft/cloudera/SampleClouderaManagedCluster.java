@@ -1,6 +1,5 @@
 package io.cloudsoft.cloudera;
 
-import static com.google.common.collect.Iterables.getOnlyElement;
 import io.cloudsoft.cloudera.brooklynnodes.AllServices;
 import io.cloudsoft.cloudera.brooklynnodes.ClouderaCdhNode;
 import io.cloudsoft.cloudera.brooklynnodes.ClouderaCdhNodeImpl;
@@ -105,8 +104,15 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
     		if (loc instanceof VCloudDirectorLocation) {
     			Integer cpuCount = getConfig(CPU_COUNT);
     			Long memorySize = getConfig(MEMORY_SIZE_MB);
+    			Long secondaryDiskSizeGb = getConfig(SECOND_DISK_SIZE_GB);
     			if (cpuCount != null) ((Configurable)loc).setConfig(VCloudDirectorLocation.CPU_COUNT, cpuCount);
 				if (memorySize != null) ((Configurable)loc).setConfig(VCloudDirectorLocation.MEMORY_SIZE_MB, memorySize);
+                if (secondaryDiskSizeGb != null && secondaryDiskSizeGb > 0) {
+                    ((Configurable)loc).setConfig(VCloudDirectorLocation.SECOND_DISK_SIZE_MB, secondaryDiskSizeGb*1000);
+                    ((Configurable)loc).setConfig(VCloudDirectorLocation.MOUNT_POINT, "/mnt/data");
+                } else {
+                    ((Configurable)loc).setConfig(VCloudDirectorLocation.SECOND_DISK_SIZE_MB, null);
+                }
     		}
     	}
     	
