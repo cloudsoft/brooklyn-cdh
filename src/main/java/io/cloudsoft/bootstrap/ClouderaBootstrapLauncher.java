@@ -144,13 +144,7 @@ public class ClouderaBootstrapLauncher extends AbstractApplication {
                 .configure(BrooklynNode.MANAGEMENT_PASSWORD, brooklynPassword)
                 .configure(BrooklynNode.BROOKLYN_CATALOG_CONTENTS, catalogContents)
                 .configure(BrooklynNode.BROOKLYN_PROPERTIES_CONTENTS, propertiesContents)
-                .configure(BrooklynNode.CLASSPATH, classpathUploadsList)
-//                .configure(BrooklynNode.PORT_MAPPER, new Function<Integer,Integer>() {
-//                        @Override public Integer apply(@Nullable Integer input) {
-//                            // in atos vcloud, there's DNAT to expose port 8081 as 80 (on the same public IP that 22 was exposed on)
-//                            return (input == 8081 ? 80 : input);
-//                        }}));
-                );
+                .configure(BrooklynNode.CLASSPATH, classpathUploadsList));
     }
     
     // FIXME how to get location id?
@@ -161,6 +155,7 @@ public class ClouderaBootstrapLauncher extends AbstractApplication {
             @EffectorParam(name="clusterSize") int clusterSize, 
             @EffectorParam(name="cpuCount") int cpuCount, 
             @EffectorParam(name="memorySize") long memorySize, 
+            @EffectorParam(name="secondDiskSize") long secondDiskSize, 
             @EffectorParam(name="locationId") String locationId) {
         
         URI brooklynUri = brooklynNode.getAttribute(BrooklynNode.WEB_CONSOLE_URI);
@@ -177,7 +172,8 @@ public class ClouderaBootstrapLauncher extends AbstractApplication {
                         "\"setupDns\": \""+setupDns+"\"," + "\n" +
                         "\"memorySize\": \""+memorySize+"\"," + "\n" +
                         "\"cdh.clusterSize\": \""+clusterSize+"\"," + "\n" +
-                        "\"cpuCount\": \""+cpuCount+"\"" + "\n" +
+                        "\"cpuCount\": \""+cpuCount+"\"," + "\n" +
+                        "\"cdg.second.diskSize\": \""+secondDiskSize+"\"" + "\n" +
                     "}" + "\n" +
                 "}" + "\n";
 
