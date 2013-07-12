@@ -7,8 +7,8 @@ import java.util.Collection;
 
 import brooklyn.config.ConfigKey;
 import brooklyn.entity.Entity;
+import brooklyn.entity.annotation.Effector;
 import brooklyn.entity.basic.Attributes;
-import brooklyn.entity.basic.Description;
 import brooklyn.entity.basic.Lifecycle;
 import brooklyn.entity.proxying.ImplementedBy;
 import brooklyn.entity.trait.Startable;
@@ -52,7 +52,7 @@ public interface ClouderaService extends Entity, Startable {
     public static final AttributeSensor<String> SERVICE_URL = new BasicAttributeSensor<String>(
         	String.class, "cloudera.service.url", "Direct URL of service (may not be accessible if in private subnet)");
         
-    @Description("Start the process/service represented by an entity")
+    @Effector(description="Start the process/service represented by an entity")
     public void create();
 
     public ClouderaRestCaller getApi();

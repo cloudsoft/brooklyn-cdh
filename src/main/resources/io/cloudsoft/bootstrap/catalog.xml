@@ -1,0 +1,9 @@
+<catalog>
+<name>Cloudsoft Brooklyn CDH</name>
+
+<template type="io.cloudsoft.cloudera.SampleClouderaManagedCluster" name="Cloudera CDH4">
+    <description>Launches Cloudera Distribution for Hadoop Manager with a Cloudera Manager and an initial cluster of 4 CDH nodes
+    (resizable) and default services including HDFS, MapReduce, and HBase</description>
+    <iconUrl>http://blog.scalar.ca/Portals/74388/images/cloudera-desktop-a-new-hadoop-management-tool-2.jpg</iconUrl>
+</template>
+</catalog>

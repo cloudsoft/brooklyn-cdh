@@ -140,18 +140,6 @@ public class DirectClouderaManagerSshDriver extends AbstractSoftwareProcessSshDr
 
     @Override
     public void launch() {
-        // particularly useful for IBM SCE
-        if (getLocation().getConfig(IbmSmartLocationConfig.SELINUX_DISABLED)) {
-            log.debug("Disable SELINUX");
-            newScript(LAUNCHING+":disableSELINUX").setFlag(SshTool.PROP_ALLOCATE_PTY.getName(), true).
-            body.append(
-                    CommonCommands.sudo("sed -i \"s/SELINUX=/SELINUX=disabled # it was /\" /etc/selinux/config"),
-                    CommonCommands.sudo("reboot"))
-                    .execute();
-            Time.sleep(10*1000L);
-            waitForSshable(getLocation(), getLocation().getConfig(IbmSmartLocationConfig.SSH_REACHABLE_TIMEOUT_MILLIS));
-        }
-        
         newScript(LAUNCHING).
             body.append(
                     CommonCommands.sudo(
@@ -202,10 +190,26 @@ public class DirectClouderaManagerSshDriver extends AbstractSoftwareProcessSshDr
     
     // TODO Move up to CommonCommands
     private void setSelinuxDisabled() {
+        // TODO Guard with getConfig - e.g. IbmSmartLocationConfig.SELINUX_DISABLED, but also want in vcloud on CentOS 6.4
+        // particularly useful for IBM SCE and Atos vcloud
+        log.debug("Disabling SELINUX on {}", this);
 		newScript("setSelinuxDisabled")
+		        .setFlag(SshTool.PROP_ALLOCATE_PTY.getName(), true)
 				.body.append(
-						CommonCommands.sudo("sed -i \"s/SELINUX=enforcing/SELINUX=disabled/\" /etc/selinux/config"),
+						CommonCommands.sudo("sed -i \"s/SELINUX=/SELINUX=disabled # it was /\" /etc/selinux/config"),
 						CommonCommands.sudo("reboot"))
 				.execute();
+		
+        Time.sleep(10*1000L);
+        waitForSshable(getLocation(), getLocation().getConfig(IbmSmartLocationConfig.SSH_REACHABLE_TIMEOUT_MILLIS));
+
+        // TODO Hack to be on the safe side: so Network Manager won't be overwriting /etc/resolv.conf
+        // at same time as DNS is updating it.
+        // This code will go once Andrew's DNS config is right.
+        Time.sleep(10*1000L);
+
+        // FIXME Temporary hack to get around reboot having reset /etc/resolv.conf, which the BindDnsServer
+        // will have previously modified. By unsetting and resetting the LOCAL_HOSTNAME, the bind-dns server
+        // will go through its logic again.
     }
 }

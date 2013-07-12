@@ -172,11 +172,19 @@ public class ClouderaCdhNodeImpl extends SoftwareProcessImpl implements Cloudera
     public String getManagedHostId() {
         def managedHosts = getConfig(MANAGER)?.getAttribute(ClouderaManagerNode.MANAGED_HOSTS);
         if (!managedHosts) return null;
+        
+        String localHostname = getAttribute(LOCAL_HOSTNAME);
+        if (localHostname && managedHosts.contains(localHostname)) {
+            log.debug("ManagedHostId is local hostname: "+ localHostname);
+            return localHostname;
+        }
+        
         String hostname = getAttribute(HOSTNAME);
         if (hostname && managedHosts.contains(hostname)) {
             log.debug("ManagedHostId is hostname: "+ hostname);
             return hostname;
         }
+        
         String privateHostname = getAttribute(PRIVATE_HOSTNAME);
         if (privateHostname) {
             // manager might view it as ip-10-1-1-1.ec2.internal whereas node knows itself as just ip-10-1-1-1
@@ -184,10 +192,10 @@ public class ClouderaCdhNodeImpl extends SoftwareProcessImpl implements Cloudera
             def pm = managedHosts.find { it.startsWith(privateHostname) }
             
             if (pm) {
-                log.debug("ManagedHostId: "+ pm);
+                log.debug("ManagedHostId is private hostname: "+ pm);
                 return pm;
             } else {
-                log.debug("ManagedHostId: "+ privateHostname);
+                log.debug("ManagedHostId (using private-hostname, not in managed-hosts): "+ privateHostname);
                 return privateHostname;
             }
         }

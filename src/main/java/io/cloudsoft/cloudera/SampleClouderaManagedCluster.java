@@ -1,6 +1,5 @@
 package io.cloudsoft.cloudera;
 
-import static com.google.common.collect.Iterables.getOnlyElement;
 import io.cloudsoft.cloudera.brooklynnodes.AllServices;
 import io.cloudsoft.cloudera.brooklynnodes.ClouderaCdhNode;
 import io.cloudsoft.cloudera.brooklynnodes.ClouderaCdhNodeImpl;
@@ -73,6 +72,7 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
     	    dnsServer = addChild(EntitySpecs.spec(BindDnsServer.class).displayName("dns-server")
     	            .configure("filter", Predicates.or(Predicates.instanceOf(ClouderaManagerNode.class), Predicates.instanceOf(ClouderaCdhNode.class)))
     	            .configure("domainName", "cloudera")
+    	            .configure(BindDnsServer.REPLACE_RESOLV_CONF, true)
     	            .configure("hostnameSensor", ClouderaManagerNode.LOCAL_HOSTNAME));
     	}
     	
@@ -93,6 +93,7 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
 
         services = (AllServices) addChild(getEntityManager().createEntity(
                 BasicEntitySpec.newInstance(AllServices.class).displayName("Cloudera Services")));
+        
         addEnricher(SensorPropagatingEnricher.newInstanceListeningTo(clouderaManagerNode,
                 ClouderaManagerNode.CLOUDERA_MANAGER_URL));
     }
@@ -103,11 +104,29 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
     		if (loc instanceof VCloudDirectorLocation) {
     			Integer cpuCount = getConfig(CPU_COUNT);
     			Long memorySize = getConfig(MEMORY_SIZE_MB);
+    			Long secondaryDiskSizeGb = getConfig(SECOND_DISK_SIZE_GB);
     			if (cpuCount != null) ((Configurable)loc).setConfig(VCloudDirectorLocation.CPU_COUNT, cpuCount);
 				if (memorySize != null) ((Configurable)loc).setConfig(VCloudDirectorLocation.MEMORY_SIZE_MB, memorySize);
+                if (secondaryDiskSizeGb != null && secondaryDiskSizeGb > 0) {
+                    ((Configurable)loc).setConfig(VCloudDirectorLocation.SECOND_DISK_SIZE_MB, secondaryDiskSizeGb*1000);
+                    ((Configurable)loc).setConfig(VCloudDirectorLocation.MOUNT_POINT, "/mnt/data");
+                } else {
+                    ((Configurable)loc).setConfig(VCloudDirectorLocation.SECOND_DISK_SIZE_MB, null);
+                }
     		}
     	}
+    	
+        Stopwatch stopwatch = new Stopwatch().start();
+
     	super.start(locations);
+    	
+        Entities.dumpInfo(this);
+        
+        log.info("Starting CDH services for {} (startup time so far is {} seconds)", this, stopwatch.elapsedTime(TimeUnit.SECONDS));
+        startServices(true, false);
+        
+        stopwatch.stop(); 
+        log.info("Time to deploy " + locations + ": " + stopwatch.elapsedTime(TimeUnit.SECONDS) + " seconds");
     }
 	
     @Override
@@ -169,9 +188,6 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
         String port = CommandLineUtil.getCommandLineOption(args, "--port", "8081+");
         String location = CommandLineUtil.getCommandLineOption(args, "--location", DEFAULT_LOCATION);
 
-        Stopwatch stopwatch = new Stopwatch();
-        stopwatch.start();
-        log.info("Start time for CDH deployment on '" + location +"'");
         BrooklynLauncher launcher = BrooklynLauncher.newInstance()
                                                     .application(
                                                             EntitySpecs.appSpec(SampleClouderaManagedClusterInterface.class)
@@ -179,12 +195,5 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
                                                     .webconsolePort(port)
                                                     .location(location)
                                                     .start();
-        Entities.dumpInfo(launcher.getApplications());
-        SampleClouderaManagedClusterInterface app = 
-                (SampleClouderaManagedClusterInterface) getOnlyElement(launcher.getApplications());
-        app.startServices(true, false);
-        stopwatch.stop(); 
-        log.info("Time to deploy " + location + ": " + stopwatch.elapsedTime(TimeUnit.SECONDS) + " seconds");
     }
-
 }
