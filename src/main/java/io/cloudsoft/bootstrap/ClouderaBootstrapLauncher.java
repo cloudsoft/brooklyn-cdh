@@ -8,8 +8,6 @@ import java.security.cert.X509Certificate;
 import java.util.List;
 import java.util.Map;
 
-import javax.annotation.Nullable;
-
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.auth.AuthScope;
@@ -35,22 +33,22 @@ import brooklyn.entity.basic.ConfigKeys;
 import brooklyn.entity.brooklynnode.BrooklynNode;
 import brooklyn.entity.proxying.EntitySpecs;
 import brooklyn.event.feed.http.HttpPollValue;
+import brooklyn.launcher.BrooklynLauncher;
+import brooklyn.util.CommandLineUtil;
 import brooklyn.util.ResourceUtils;
 import brooklyn.util.exceptions.Exceptions;
 
-import com.google.common.base.Function;
 import com.google.common.base.Optional;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
 
 @Catalog(name = "Cloudera CDH4 Bootstrap", description = "Bootstrapper for launching Cloudera CDH in a cloud", iconUrl = "classpath://io/cloudsoft/cloudera/cloudera.jpg")
 public class ClouderaBootstrapLauncher extends AbstractApplication {
 
-    // FIXME Don't want this in final commit!
-    private static final String REPOS_DIR = "/Users/aled/repos";
-    private static final String M2_REPOS_DIR = "/Users/aled/.m2/repository";
+    private static final String M2_REPOS_DIR = "file://~/.m2/repository";
 
     /*
      * Config for installing brooklyn...
@@ -59,7 +57,7 @@ public class ClouderaBootstrapLauncher extends AbstractApplication {
     @CatalogConfig(label="brooklyn distro")
     public static final ConfigKey<String> BROOKLYN_UPLOAD_URL = ConfigKeys.newStringConfigKey(
             "brooklyn.uploadUrl", "The file for brooklyn tar.gz to upload", 
-            REPOS_DIR + "/brooklyncentral/brooklyn/usage/dist/target/brooklyn-0.6.0-SNAPSHOT-dist.tar.gz");
+            null);
     
     @CatalogConfig(label="brooklyn download")
     public static final ConfigKey<String> BROOKLYN_DOWNLOAD_URL = ConfigKeys.newStringConfigKey(
@@ -70,10 +68,10 @@ public class ClouderaBootstrapLauncher extends AbstractApplication {
     public static final ConfigKey<String> CLASSPATH_UPLOADS = ConfigKeys.newStringConfigKey(
             "brooklyn.classpathUploads", 
             "Colon-separated list of files to be uploaded onto the brooklyn classpath", 
-            M2_REPOS_DIR + "/io/cloudsoft/amp/locations/vcloud-director/0.6.0-SNAPSHOT/vcloud-director-0.6.0-SNAPSHOT.jar" + ":" +
-                    M2_REPOS_DIR + "/io/cloudsoft/amp/locations/ibm-smartcloud/0.6.0-SNAPSHOT/ibm-smartcloud-0.6.0-SNAPSHOT.jar" + ":" +
-                    REPOS_DIR + "/cloudsoft/brooklyn-cdh/target/brooklyn-cdh-1.1.0-SNAPSHOT.jar" + ":" +
-                    M2_REPOS_DIR + "/com/vmware/vcloud/vcloud-java-sdk/5.1.0/vcloud-java-sdk-5.1.0.jar" + ":" +
+            M2_REPOS_DIR + "/io/cloudsoft/amp/locations/vcloud-director/0.6.0-SNAPSHOT/vcloud-director-0.6.0-SNAPSHOT.jar" + "\n" +
+                    M2_REPOS_DIR + "/io/cloudsoft/amp/locations/ibm-smartcloud/0.6.0-SNAPSHOT/ibm-smartcloud-0.6.0-SNAPSHOT.jar" + "\n" +
+                    M2_REPOS_DIR + "/io/cloudsoft/cloudera/brooklyn-cdh/1.1.0-SNAPSHOT/brooklyn-cdh-1.1.0-SNAPSHOT.jar" + "\n" +
+                    M2_REPOS_DIR + "/com/vmware/vcloud/vcloud-java-sdk/5.1.0/vcloud-java-sdk-5.1.0.jar" + "\n" +
                     M2_REPOS_DIR + "/com/vmware/vcloud/rest-api-schemas/5.1.0/rest-api-schemas-5.1.0.jar");
     
     @CatalogConfig(label="brooklyn username")
@@ -121,8 +119,8 @@ public class ClouderaBootstrapLauncher extends AbstractApplication {
         String vcloudIdentity = getConfigOrProperty(VCLOUD_IDENTITY);
         String vcloudCredential = getConfigOrProperty(VCLOUD_CREDENTIAL);
         String classpathUploads = getConfigOrProperty(CLASSPATH_UPLOADS);
-        List<String> classpathUploadsList = ImmutableList.copyOf(Splitter.on(":").split(classpathUploads));
-        
+        List<String> classpathUploadsList = ImmutableList.copyOf(Splitter.on("\n").split(classpathUploads));
+        List<String> classpathUloadsListTidied = tidyFilepaths(classpathUploadsList);
         String catalogContents = new ResourceUtils(this).getResourceAsString(getConfig(CATALOG_XML_URL));
         
         // FIXME How to supply yum.mirror.url when don't know what IP will be yet?
@@ -144,9 +142,20 @@ public class ClouderaBootstrapLauncher extends AbstractApplication {
                 .configure(BrooklynNode.MANAGEMENT_PASSWORD, brooklynPassword)
                 .configure(BrooklynNode.BROOKLYN_CATALOG_CONTENTS, catalogContents)
                 .configure(BrooklynNode.BROOKLYN_PROPERTIES_CONTENTS, propertiesContents)
-                .configure(BrooklynNode.CLASSPATH, classpathUploadsList));
+                .configure(BrooklynNode.CLASSPATH, classpathUloadsListTidied));
     }
     
+    // TODO Move into BrooklynNode?
+    private List<String> tidyFilepaths(List<String> paths) {
+        List<String> result = Lists.newArrayList();
+        for (String path : paths) {
+            String tidied = ResourceUtils.tidyFileUrl(path);
+            if (tidied.startsWith("file://")) tidied = tidied.substring("file://".length());
+            result.add(tidied);
+        }
+        return result;
+    }
+
     // FIXME how to get location id?
     // FIXME Doesn't work yet: need to get headers / uri etc right
     @Effector(description="Launches CDH via the child brooklyn")
@@ -249,5 +258,19 @@ public class ClouderaBootstrapLauncher extends AbstractApplication {
         public boolean isTrusted(X509Certificate[] chain, String authType) throws CertificateException {
             return true;
         }
+    }
+    
+    public static void main(String[] argv) throws Exception {
+        List<String> args = Lists.newArrayList(argv);
+        String port = CommandLineUtil.getCommandLineOption(args, "--port", "8081+");
+        String location = CommandLineUtil.getCommandLineOption(args, "--location", "localhost");
+
+        BrooklynLauncher launcher = BrooklynLauncher.newInstance()
+                                                    .application(
+                                                            EntitySpecs.appSpec(ClouderaBootstrapLauncher.class)
+                                                            .displayName("Bootstrapper"))
+                                                    .webconsolePort(port)
+                                                    .location(location)
+                                                    .start();
     }
 }
