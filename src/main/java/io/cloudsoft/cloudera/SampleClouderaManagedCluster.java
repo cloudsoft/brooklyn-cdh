@@ -135,17 +135,18 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
         log.info("CDH services now online -- "+clouderaManagerNode.getAttribute(ClouderaManagerNode.CLOUDERA_MANAGER_URL));
     }
 
-    /**
+    /** 
      * Launches the application, along with the brooklyn web-console.
      */
     public static void main(String[] argv) throws Exception {
         List<String> args = Lists.newArrayList(argv);
         String port = CommandLineUtil.getCommandLineOption(args, "--port", "8081+");
         String location = CommandLineUtil.getCommandLineOption(args, "--location", DEFAULT_LOCATION);
-
+        log.debug("Brooklyn will use port {}", port);
+        log.debug("Brooklyn will deploy on location {}", location);
         Stopwatch stopwatch = new Stopwatch();
         stopwatch.start();
-        log.info("Start time for CDH deployment on '" + location +"'");
+        log.info("Start CDH deployment on '" + location +"'");
         BrooklynLauncher launcher = BrooklynLauncher.newInstance()
                                                     .application(
                                                             EntitySpecs.appSpec(SampleClouderaManagedClusterInterface.class)

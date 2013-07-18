@@ -10,6 +10,7 @@ import brooklyn.entity.Entity;
 import brooklyn.event.AttributeSensor;
 import brooklyn.event.basic.BasicAttributeSensor;
 import brooklyn.event.basic.BasicConfigKey;
+import brooklyn.event.basic.Sensors;
 import brooklyn.util.flags.SetFromFlag;
 
 
@@ -42,7 +43,8 @@ public interface ClouderaManagerNode extends Entity {
     public static final BasicConfigKey<Boolean> USE_IP_ADDRESS = 
         new BasicConfigKey<Boolean>(Boolean.class, "cloudera.manager.use.ip.address", "Force ip address usage instead of hostname", false);
 
-
+    public static final AttributeSensor<String> LOCAL_HOSTNAME = Sensors.newStringSensor( "host.localName", "Host name, according to `hostname` on the machine");
+    
     public ClouderaCdhNode findEntityForHostId(String hostId);
     
 }
