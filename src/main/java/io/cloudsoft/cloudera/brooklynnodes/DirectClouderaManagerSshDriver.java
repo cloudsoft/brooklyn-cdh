@@ -4,32 +4,38 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.concurrent.Callable;
 
 import joptsimple.internal.Strings;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import brooklyn.entity.basic.AbstractSoftwareProcessSshDriver;
 import brooklyn.entity.basic.EntityLocal;
 import brooklyn.location.basic.SshMachineLocation;
-import brooklyn.location.ibm.smartcloud.IbmSmartCloudSshMachineLocation;
 import brooklyn.location.ibm.smartcloud.IbmSmartLocationConfig;
 import brooklyn.util.ResourceUtils;
+import brooklyn.util.collections.MutableMap;
 import brooklyn.util.internal.Repeater;
 import brooklyn.util.internal.ssh.SshTool;
 import brooklyn.util.ssh.CommonCommands;
 import brooklyn.util.time.Time;
 
 import com.google.common.base.Preconditions;
+import com.google.common.base.Splitter;
 import com.google.common.base.Throwables;
+import com.google.common.collect.ImmutableList;
 import com.google.common.io.CharStreams;
 
 public class DirectClouderaManagerSshDriver extends AbstractSoftwareProcessSshDriver implements DirectClouderaManagerDriver {
 
+    private static final Logger LOG = LoggerFactory.getLogger(DirectClouderaManagerSshDriver.class);
+   
     private static final String YUM = "yum";
     private static final String APT_GET = "apt-get";
 
@@ -54,15 +60,7 @@ public class DirectClouderaManagerSshDriver extends AbstractSoftwareProcessSshDr
 
     @Override
     public void install() {
-        try {
-            String ip = InetAddress.getByName(getHostname()).getHostAddress();
-            newScript("setHostname").body.append(
-                    CommonCommands.sudo("hostname " + ip), 
-                    CommonCommands.sudo("echo " + ip + "  > /etc/hostname"),
-                    CommonCommands.sudo("sed -i \"/^" + ip + "/ d\" /etc/hosts")).execute();
-        } catch (UnknownHostException e) {
-            throw Throwables.propagate(e);
-        }
+        entity.setAttribute(DirectClouderaManager.LOCAL_HOSTNAME, execHostname());
         
         InputStream installCM = new ResourceUtils(this).getResourceFromUrl("install_cm.sh");
         Preconditions.checkNotNull(installCM, "cannot find install_cm.sh script");
@@ -170,4 +168,25 @@ public class DirectClouderaManagerSshDriver extends AbstractSoftwareProcessSshDr
         }
     }
 
+    // TODO Move up to a super-type
+    private String execHostname() {
+        if (LOG.isTraceEnabled()) LOG.trace("Retrieve `hostname` via ssh for {}", this);
+        String command = "echo hostname=`hostname`";
+        ByteArrayOutputStream stdout = new ByteArrayOutputStream();
+        ByteArrayOutputStream stderr = new ByteArrayOutputStream();
+    
+        int exitStatus = execute(MutableMap.of("out", stdout, "err", stderr), ImmutableList.of(command), "getHostname");
+    String stdouts = new String(stdout.toByteArray());
+    String stderrs = new String(stderr.toByteArray());
+    
+    Iterable<String> lines = Splitter.on("\n").split(stdouts);
+    for (String line : lines) {
+      if (line.contains("hostname=") && !line.contains("`hostname`")) {
+        return line.substring(line.indexOf("hostname=")+"hostname=".length());
+      }
+    }
+    
+    LOG.info("No hostname found for {} (got {}; {})", new Object[] {this, stdouts, stderrs});
+    return null;
+    }
 }

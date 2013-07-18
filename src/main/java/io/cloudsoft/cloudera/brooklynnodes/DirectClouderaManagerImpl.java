@@ -47,11 +47,12 @@ import com.google.common.collect.Iterables;
 
 public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements DirectClouderaManager {
 
+   
     static {
         RendererHints.register(CLOUDERA_MANAGER_URL, new RendererHints.NamedActionWithUrl("Open"));
     }
 
-    private FunctionFeed sensorFeed;
+    private FunctionFeed functionFeed;
 
 //
 //    @Override
@@ -180,7 +181,7 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
 
     @Override
     public void connectSensors() {
-        sensorFeed = FunctionFeed.builder()
+        functionFeed = FunctionFeed.builder()
                 .entity(this)
                 .poll(new FunctionPollConfig<Boolean,Boolean>(SERVICE_UP)
                         .period(30, TimeUnit.SECONDS)
@@ -222,13 +223,11 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
     }
 
     @Override
-    public void disconnectSensors() {
-        disconnectServiceUpIsRunning();
-        if (sensorFeed != null) {
-            sensorFeed.stop();
-        }
-    }
-
+    protected void disconnectSensors() {
+      super.disconnectSensors();
+      if (functionFeed != null) functionFeed.stop();
+    }    
+    
     public static void authorizeIngress(ComputeServiceContext computeServiceContext,
         Set<Instance> instances, ClusterSpec clusterSpec, List<String> cidrs, int... ports) {
         

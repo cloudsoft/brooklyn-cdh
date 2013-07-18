@@ -3,7 +3,7 @@
     
     <groupId>io.cloudsoft.cloudera</groupId>
     <artifactId>brooklyn-cdh</artifactId>
-    <version>1.1.0-SNAPSHOT</version>
+    <version>1.2.0-SNAPSHOT</version>
     <packaging>jar</packaging>
     
     <name>Brooklyn Cloudera Manager and Hadoop Descriptor</name>
@@ -44,6 +44,9 @@
         <logback.version>1.0.7</logback.version>
         <cloudera-whirr-cdh.version>0.8.0-cdh4.1.3</cloudera-whirr-cdh.version>
         <surefire.version>2.13</surefire.version>
+        
+        <includedTestGroups />
+        <excludedTestGroups>Integration,Acceptance,Live,WIP</excludedTestGroups>
     </properties>
 
     <dependencies>
@@ -98,21 +101,42 @@
             <artifactId>jclouds-sshj</artifactId>
             <version>${jclouds.version}</version>
         </dependency>
-        <dependency>
-            <groupId>io.cloudsoft.amp.locations</groupId>
-            <artifactId>ibm-smartcloud</artifactId>
-            <version>${brooklyn.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.cloudsoft.amp.locations</groupId>
-            <artifactId>vcloud-director</artifactId>
-            <version>${brooklyn.version}</version>
-        </dependency>
+            <dependency>
+                <groupId>io.cloudsoft.amp.locations</groupId>
+                <artifactId>ibm-smartcloud</artifactId>
+                <version>${brooklyn.version}</version>
+            </dependency>
         <dependency>
             <!-- web testing -->
             <groupId>org.simpleframework</groupId>
             <artifactId>simple</artifactId>
             <version>4.1.9</version>
+            <scope>test</scope>
+        </dependency>
+                 <dependency>
+            <groupId>org.testng</groupId>
+            <artifactId>testng</artifactId>
+            <version>${testng.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.brooklyn</groupId>
+            <artifactId>brooklyn-test-support</artifactId>
+            <version>${brooklyn.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.brooklyn</groupId>
+            <artifactId>brooklyn-core</artifactId>
+            <version>${brooklyn.version}</version>
+            <classifier>tests</classifier>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.brooklyn</groupId>
+            <artifactId>brooklyn-software-base</artifactId>
+            <version>${brooklyn.version}</version>
+            <classifier>tests</classifier>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -301,6 +325,56 @@
     </build>
 
     <profiles>
+         <profile>
+            <id>Tests</id>
+            <activation>
+                <file> <exists>${basedir}/src/test</exists> </file>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <version>${surefire.version}</version>
+                        <configuration>
+                            <properties>
+                                <property>
+                                    <name>listener</name>
+                                    <value>brooklyn.test.LoggingVerboseReporter</value>
+                                </property>
+                            </properties>
+                            <enableAssertions>true</enableAssertions>
+                            <groups>${includedTestGroups}</groups>
+                            <excludedGroups>${excludedTestGroups}</excludedGroups>
+                            <testFailureIgnore>false</testFailureIgnore>
+                            <systemPropertyVariables>
+                                <verbose>-1</verbose>
+                                <net.sourceforge.cobertura.datafile>${project.build.directory}/cobertura/cobertura.ser</net.sourceforge.cobertura.datafile>
+                                <cobertura.user.java.nio>false</cobertura.user.java.nio>
+                            </systemPropertyVariables>
+                            <printSummary>true</printSummary>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <artifactId>maven-jar-plugin</artifactId>
+                        <inherited>true</inherited>
+                        <version>2.4</version>
+                        <executions>
+                            <execution>
+                                <id>test-jar-creation</id>
+                                <goals>
+                                    <goal>test-jar</goal>
+                                </goals>
+                                <configuration>
+                                    <forceCreation>true</forceCreation>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+ 
         <!-- sign and make javadoc when deploying; note, this means you'll need gpg set up to deploy -->
         <profile>
             <id>make-more-things-when-deploying</id>

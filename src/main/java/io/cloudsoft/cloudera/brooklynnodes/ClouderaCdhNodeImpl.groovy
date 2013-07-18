@@ -43,6 +43,8 @@ import com.google.common.io.Files;
 @InheritConstructors
 public class ClouderaCdhNodeImpl extends SoftwareProcessImpl implements ClouderaCdhNode {
 
+    FunctionFeed feed;
+  
     @Override
     public void waitForEntityStart() {
         if (log.isDebugEnabled()) log.debug("waiting to ensure {} doesn't abort prematurely", this);
@@ -130,7 +132,7 @@ public class ClouderaCdhNodeImpl extends SoftwareProcessImpl implements Cloudera
     
     public void connectSensors() {
         super.connectSensors();
-        FunctionFeed feed = FunctionFeed.builder()
+        feed = FunctionFeed.builder()
                 .entity(this)
                 .poll(new FunctionPollConfig<Boolean,Boolean>(SERVICE_UP)
                 .period(30, TimeUnit.SECONDS)
@@ -158,6 +160,12 @@ public class ClouderaCdhNodeImpl extends SoftwareProcessImpl implements Cloudera
                 .onError(Functions.constant(false))
                 )
                 .build();
+    }
+    
+    @Override
+    protected void disconnectSensors() {
+       super.disconnectSensors();
+       if (feed != null) feed.stop();
     }
     
     public String getManagedHostId() {
