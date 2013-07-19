@@ -13,7 +13,12 @@ if [ ! -x "$JAVA" ] ; then
   exit 1
 fi
 
-if [ ! `ls brooklyn-cdh-*.jar 2> /dev/null` ] ; then
+if [[ -e "$1" --location ]] ; then
+  # this script assumes location is the first argument
+  shift
+fi
+
+if [[ ! `ls brooklyn-cdh-*.jar 2> /dev/null` ]] ; then
   echo Command must be run from the directory where it is installed.
   exit 1
 fi
