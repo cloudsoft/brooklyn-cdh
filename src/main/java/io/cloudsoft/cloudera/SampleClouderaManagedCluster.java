@@ -1,6 +1,5 @@
 package io.cloudsoft.cloudera;
 
-import static com.google.common.collect.Iterables.getOnlyElement;
 import io.cloudsoft.cloudera.brooklynnodes.AllServices;
 import io.cloudsoft.cloudera.brooklynnodes.ClouderaCdhNode;
 import io.cloudsoft.cloudera.brooklynnodes.ClouderaCdhNodeImpl;
@@ -14,6 +13,7 @@ import io.cloudsoft.cloudera.builders.MapReduceTemplate;
 import io.cloudsoft.cloudera.builders.ZookeeperTemplate;
 import io.cloudsoft.cloudera.rest.RestDataObjects.HdfsRoleType;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -21,15 +21,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import brooklyn.catalog.Catalog;
-import brooklyn.config.BrooklynProperties;
+import brooklyn.catalog.CatalogConfig;
+import brooklyn.config.ConfigKey;
 import brooklyn.enricher.basic.SensorPropagatingEnricher;
 import brooklyn.entity.Entity;
 import brooklyn.entity.basic.AbstractApplication;
+import brooklyn.entity.basic.ConfigKeys;
 import brooklyn.entity.basic.Entities;
 import brooklyn.entity.group.DynamicCluster;
 import brooklyn.entity.proxying.BasicEntitySpec;
 import brooklyn.entity.proxying.EntitySpecs;
 import brooklyn.launcher.BrooklynLauncher;
+import brooklyn.location.Location;
 import brooklyn.util.CommandLineUtil;
 
 import com.google.common.base.Stopwatch;
@@ -39,7 +42,20 @@ import com.google.common.collect.Lists;
 public class SampleClouderaManagedCluster extends AbstractApplication implements SampleClouderaManagedClusterInterface {
 
     static final Logger log = LoggerFactory.getLogger(SampleClouderaManagedCluster.class);
+    
     static final String DEFAULT_LOCATION = "aws-ec2:us-east-1";
+    
+    @CatalogConfig(label="Number of CDH nodes", priority=2)
+    private static final ConfigKey<Integer> INITIAL_SIZE_NODES = ConfigKeys.newIntegerConfigKey("cdh.initial.node.count", 
+            "Number of CDH nodes to deploy initially", 4);
+
+    @CatalogConfig(label="Certification cluster (metrics enabled)", priority=4)
+    private static final ConfigKey<Boolean> DEPLOY_CERTIFICATION_CLUSTER = ConfigKeys.newBooleanConfigKey("cdh.certificationCluster",
+            "Whether to deploy a certification cluster, i.e. enable metrics collection", true);
+    
+    @CatalogConfig(label="Deploy HBase", priority=4)
+    private static final ConfigKey<Boolean> DEPLOY_HBASE = ConfigKeys.newBooleanConfigKey("cdh.initial.services.hbase",
+            "Whether to deploy HBase as part of initial services roll-out", false);
 
     // Admin - Cloudera Manager Node
     protected Entity admin;
@@ -76,7 +92,7 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
                                 "factory",
                                 ClouderaCdhNodeImpl.newFactory()
                                         .setConfig(ClouderaCdhNode.MANAGER, clouderaManagerNode))
-                        .configure("initialSize", 4)));
+                        .configure("initialSize", getConfig(INITIAL_SIZE_NODES))));
 
         services = (AllServices) addChild(getEntityManager().createEntity(
                 BasicEntitySpec.newInstance(AllServices.class).displayName("Cloudera Services")));
@@ -84,6 +100,13 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
                 ClouderaManagerNode.CLOUDERA_MANAGER_URL));
     }
 
+    @Override
+    public void start(Collection<? extends Location> locations) {
+        super.start(locations);
+        startServices(getConfig(DEPLOY_CERTIFICATION_CLUSTER), getConfig(DEPLOY_HBASE));
+    }
+    
+    
     @Override
     public void launchDefaultServices(boolean enabled) {
         launchDefaultServices = enabled;
@@ -101,7 +124,7 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
                 assignRole(HdfsRoleType.DATANODE).toAllHosts().
                 formatNameNodes().
                 enableMetrics(isCertificationCluster).
-                buildWithEntity(clouderaManagerNode);
+                buildWithEntity(services);
             
         new MapReduceTemplate().
                 named("mapreduce-sample").
@@ -155,11 +178,8 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
                                                     .location(location)
                                                     .start();
         Entities.dumpInfo(launcher.getApplications());
-        SampleClouderaManagedClusterInterface app = 
-                (SampleClouderaManagedClusterInterface) getOnlyElement(launcher.getApplications());
-        app.startServices(true, false);
-        stopwatch.stop(); 
-        log.info("Time to deploy " + location + ": " + stopwatch.elapsedTime(TimeUnit.SECONDS) + " seconds");
+        stopwatch.stop();
+        log.info("Time to deploy " + location + ": " + stopwatch.elapsed(TimeUnit.SECONDS) + " seconds");
     }
 
 }
