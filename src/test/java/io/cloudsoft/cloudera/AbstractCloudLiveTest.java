@@ -42,6 +42,9 @@ public abstract class AbstractCloudLiveTest {
    
    private static final String STARTED = "STARTED";
    private static final String GOOD = "GOOD";
+   
+   private static final String CDH_USER = "admin";
+   private static final String CDH_PASSWORD = "admin";
    private ManagementContext ctx;
    private Location location;
    private TestApplication app;
@@ -76,7 +79,7 @@ public abstract class AbstractCloudLiveTest {
 
    @AfterClass
    public void afterClass() throws Exception {
-      app.stop();
+      //app.stop();
       Entities.destroyAll(ctx);
    }
    
@@ -92,9 +95,7 @@ public abstract class AbstractCloudLiveTest {
       else {
          Assert.fail();
       }
-      String user = "admin";
-      String pass = "admin";
-      caller = ClouderaRestCaller.newInstance(server, user, pass);
+      caller = ClouderaRestCaller.newInstance(server, CDH_USER, CDH_PASSWORD);
       String clusterName = Iterables.getFirst(caller.getClusters(), "");
       String jsonServices = caller.getServicesJson(clusterName).toString();
       validateServices(jsonServices);
@@ -108,10 +109,14 @@ public abstract class AbstractCloudLiveTest {
          for (String key : service.keySet()) {
             log.debug("service {}", service);
             if("healthSummary".equals(key)) {
-               Assert.assertEquals(service.get(key), GOOD);
+               String healthSummary = service.get(key);
+               log.debug("\thealthSummary {}", healthSummary);
+               Assert.assertEquals(healthSummary, GOOD);
             }
             if("serviceState".equals(key)) {
-               Assert.assertEquals(service.get(key), STARTED);
+               String serviceState = service.get(key);
+               log.debug("\tserviceState {}", serviceState);
+               Assert.assertEquals(serviceState, STARTED);
             }
          }
       }
