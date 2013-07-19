@@ -13,7 +13,7 @@ if [ ! -x "$JAVA" ] ; then
   exit 1
 fi
 
-if [[ -e "$1" --location ]] ; then
+if [[ "$1" == --location ]] ; then
   # this script assumes location is the first argument
   shift
 fi
