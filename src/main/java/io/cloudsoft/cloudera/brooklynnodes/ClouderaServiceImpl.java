@@ -19,6 +19,7 @@ import brooklyn.entity.basic.AbstractEntity;
 import brooklyn.entity.basic.Description;
 import brooklyn.entity.basic.Lifecycle;
 import brooklyn.entity.basic.NamedParameter;
+import brooklyn.entity.trait.StartableMethods;
 import brooklyn.event.feed.function.FunctionFeed;
 import brooklyn.event.feed.function.FunctionPollConfig;
 import brooklyn.location.Location;
@@ -181,14 +182,8 @@ public class ClouderaServiceImpl extends AbstractEntity implements ClouderaServi
     @Override
     @Description("Stop the process/service represented by an entity")
     public void stop() {
-        if (getAttribute(SERVICE_STATE)==Lifecycle.STOPPED) {
-            log.debug("Ignoring stop when already stopped at " + this);
-            return;
-        }
-        disconnectSensors();
-        setAttribute(SERVICE_STATE, Lifecycle.STOPPING);
-        invokeServiceCommand("stop");
-        setAttribute(SERVICE_STATE, Lifecycle.STOPPED);
+       StartableMethods.stop(this);
+       disconnectSensors();
     }
 
     @Override
