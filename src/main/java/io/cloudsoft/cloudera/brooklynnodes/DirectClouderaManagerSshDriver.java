@@ -62,16 +62,19 @@ public class DirectClouderaManagerSshDriver extends AbstractSoftwareProcessSshDr
     public void install() {
         entity.setAttribute(DirectClouderaManager.LOCAL_HOSTNAME, execHostname());
         
+        // TODO move install_cm.sh resource to sub-package io/cloudsoft/cloudera under src/main/resources/
         InputStream installCM = new ResourceUtils(this).getResourceFromUrl("install_cm.sh");
         Preconditions.checkNotNull(installCM, "cannot find install_cm.sh script");
+        
+        // TODO move these routines to a utility class (also see in ClodueraCdhNodeSshDriver)
         String aptProxyUrl = getLocation().getConfig(ClouderaManagerNode.APT_PROXY);
-        String yumMirrorUrl = getLocation().getConfig(ClouderaManagerNode.YUM_MIRROR);
         if(!Strings.isNullOrEmpty(aptProxyUrl)) {
             InputStream proxy = generatePackageManagerProxyFile(aptProxyUrl, APT_GET);
             getMachine().copyTo(proxy, "/tmp/02proxy");
             newScript(INSTALLING+":setAptProxy").setFlag(SshTool.PROP_ALLOCATE_PTY.getName(), true).
             body.append(CommonCommands.sudo("mv /tmp/02proxy /etc/apt/apt.conf.d/02proxy")).execute();
         }
+        String yumMirrorUrl = getLocation().getConfig(ClouderaManagerNode.YUM_MIRROR);
         if(!Strings.isNullOrEmpty(yumMirrorUrl)) {
             InputStream proxy = generatePackageManagerProxyFile(yumMirrorUrl, YUM);
             getMachine().copyTo(proxy, "/tmp/cloudera-manager.repo");
@@ -86,6 +89,7 @@ public class DirectClouderaManagerSshDriver extends AbstractSoftwareProcessSshDr
 //            // ubuntu 12.10 sometimes has "dash" as default shell; it doesn't work!
 //            body.append("( if [ -x /bin/bash ] ; then sudo ln -snvf bash /bin/sh ; fi ) || ( echo skipping dash correction )").
             // assumes use of yum to install expect; just install expect ourselves, and wget
+            // also note:  ubuntu 12.10 can cause the actual install to hang, it needs 12.04; see below
             body.append(
                     CommonCommands.INSTALL_WGET,
                     CommonCommands.installPackage("expect")).
@@ -142,6 +146,10 @@ public class DirectClouderaManagerSshDriver extends AbstractSoftwareProcessSshDr
             waitForSshable(getLocation(), getLocation().getConfig(IbmSmartLocationConfig.SSH_REACHABLE_TIMEOUT_MILLIS));
         }
         
+        // TODO should check whether it is an unsupported OS; they can hang
+        // specifically, if it is ubuntu but not ubuntu 10.04 / 12.04, we should warn
+        // (centos seems more forgiving?)
+        
         newScript(LAUNCHING).
             body.append(
                     CommonCommands.sudo(
@@ -150,6 +158,7 @@ public class DirectClouderaManagerSshDriver extends AbstractSoftwareProcessSshDr
             execute();
     }
     
+    // TODO this should be available from core brooklyn, not here
     private void waitForSshable(final SshMachineLocation machine, long delayMs) {
         boolean reachable = new Repeater()
             .repeat()

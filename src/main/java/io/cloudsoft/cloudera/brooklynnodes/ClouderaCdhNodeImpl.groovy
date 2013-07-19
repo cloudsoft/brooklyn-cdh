@@ -1,44 +1,34 @@
 package io.cloudsoft.cloudera.brooklynnodes
 
-import static brooklyn.util.GroovyJavaMethods.elvis;
-import static com.google.common.base.Preconditions.checkNotNull;
-import static io.cloudsoft.cloudera.brooklynnodes.ClouderaManagerNode.log;
-import groovy.transform.InheritConstructors;
+import static brooklyn.util.GroovyJavaMethods.elvis
+import static com.google.common.base.Preconditions.checkNotNull
+import static io.cloudsoft.cloudera.brooklynnodes.ClouderaManagerNode.log
+import groovy.transform.InheritConstructors
 
-import java.io.File;
-import java.io.IOException;
-import java.util.Map;
-import java.util.concurrent.Callable;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.Callable
+import java.util.concurrent.TimeUnit
 
-import org.jclouds.compute.domain.OsFamily;
-import org.jclouds.compute.domain.TemplateBuilder;
-import org.jclouds.googlecomputeengine.GoogleComputeEngineApiMetadata;
-import org.jclouds.openstack.nova.v2_0.config.NovaProperties;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.jclouds.compute.domain.OsFamily
+import org.jclouds.googlecomputeengine.GoogleComputeEngineApiMetadata
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
+import brooklyn.entity.basic.BasicConfigurableEntityFactory
+import brooklyn.entity.basic.ConfigurableEntityFactory
+import brooklyn.entity.basic.Description
+import brooklyn.entity.basic.Lifecycle
+import brooklyn.entity.basic.NamedParameter
+import brooklyn.entity.basic.SoftwareProcessImpl
+import brooklyn.entity.basic.lifecycle.ScriptHelper
+import brooklyn.event.feed.function.FunctionFeed
+import brooklyn.event.feed.function.FunctionPollConfig
+import brooklyn.location.MachineProvisioningLocation
+import brooklyn.location.jclouds.JcloudsLocation
+import brooklyn.location.jclouds.JcloudsLocationConfig
+import brooklyn.location.jclouds.templates.PortableTemplateBuilder
+import brooklyn.util.time.Time
 
-import brooklyn.entity.basic.BasicConfigurableEntityFactory;
-import brooklyn.entity.basic.ConfigurableEntityFactory;
-import brooklyn.entity.basic.Description;
-import brooklyn.entity.basic.Lifecycle;
-import brooklyn.entity.basic.NamedParameter;
-import brooklyn.entity.basic.SoftwareProcessImpl;
-import brooklyn.entity.basic.lifecycle.ScriptHelper;
-import brooklyn.event.feed.function.FunctionFeed;
-import brooklyn.event.feed.function.FunctionPollConfig;
-import brooklyn.location.MachineProvisioningLocation;
-import brooklyn.location.cloud.CloudLocationConfig;
-import brooklyn.location.jclouds.JcloudsLocation;
-import brooklyn.location.jclouds.JcloudsLocationConfig;
-import brooklyn.location.jclouds.templates.PortableTemplateBuilder;
-import brooklyn.util.time.Time;
-
-import com.google.common.base.Charsets;
-import com.google.common.base.Functions;
-import com.google.common.base.Throwables;
-import com.google.common.io.Files;
+import com.google.common.base.Functions
 
 @InheritConstructors
 public class ClouderaCdhNodeImpl extends SoftwareProcessImpl implements ClouderaCdhNode {
