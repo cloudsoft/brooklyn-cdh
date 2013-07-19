@@ -61,6 +61,7 @@ public class ClouderaCdhNodeSshDriver extends AbstractSoftwareProcessSshDriver i
     public void install() {
         entity.setAttribute(ClouderaCdhNode.LOCAL_HOSTNAME, execHostname());
 
+        // TODO move to io/cloudsoft/cloudera inside src/main/resources
         getMachine().copyTo(new ResourceUtils(entity).getResourceFromUrl("classpath://scm_prepare_node.tgz"), "/tmp/scm_prepare_node.tgz");
         getMachine().copyTo(new ResourceUtils(entity).getResourceFromUrl("classpath://etc_cloudera-scm-agent_config.ini"), "/tmp/etc_cloudera-scm-agent_config.ini");
         
@@ -137,6 +138,10 @@ public class ClouderaCdhNodeSshDriver extends AbstractSoftwareProcessSshDriver i
             script.updateTaskAndFailOnNonZeroResultCode().execute();
         }
 
+        discoverSubnetAddressInfo();
+    }
+
+    private void discoverSubnetAddressInfo() {
         // this entity seems to be picked up automatically at manager when agent starts on CDH node, no need to REST add call
         String ipAddress = null;
         if (getMachine() instanceof JcloudsSshMachineLocation) {
