@@ -1,5 +1,9 @@
 package io.cloudsoft.cloudera.brooklynnodes;
 
+import static brooklyn.util.ssh.CommonCommands.INSTALL_WGET;
+import static brooklyn.util.ssh.CommonCommands.alternatives;
+import static brooklyn.util.ssh.CommonCommands.exists;
+import static brooklyn.util.ssh.CommonCommands.sudo;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -32,6 +36,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.base.Splitter;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.io.CharStreams;
 
@@ -64,40 +69,57 @@ public class ClouderaCdhNodeSshDriver extends AbstractSoftwareProcessSshDriver i
         getMachine().copyTo(new ResourceUtils(entity).getResourceFromUrl("classpath://scm_prepare_node.tgz"), "/tmp/scm_prepare_node.tgz");
         getMachine().copyTo(new ResourceUtils(entity).getResourceFromUrl("classpath://etc_cloudera-scm-agent_config.ini"), "/tmp/etc_cloudera-scm-agent_config.ini");
         
-        String aptProxyUrl = getLocation().getConfig(ClouderaCdhNode.APT_PROXY);
-        if(!Strings.isNullOrEmpty(aptProxyUrl)) {
-            InputStream proxy = generatePackageManagerProxyFile(aptProxyUrl);
-            getMachine().copyTo(proxy, "/tmp/02proxy");
-            newScript(INSTALLING+":setAptProxy")
-                .body.append(CommonCommands.sudo("mv /tmp/02proxy /etc/apt/apt.conf.d/02proxy"))
-                .execute();
-        }
-        
         List<String> commands = Lists.newArrayList();
         commands.add(CommonCommands.INSTALL_TAR);
         commands.add("cd /tmp");
         commands.add("sudo mkdir /etc/cloudera-scm-agent/");
         commands.add("sudo mv etc_cloudera-scm-agent_config.ini /etc/cloudera-scm-agent/config.ini");
         commands.add("tar xzfv scm_prepare_node.tgz");
-        
         newScript(INSTALLING).
-                updateTaskAndFailOnNonZeroResultCode().
-                body.append(commands).execute();
+        updateTaskAndFailOnNonZeroResultCode().
+        body.append(commands).execute();
+        
+        // OS depending
+        commands.clear();
+        String packageManagerMirrorUrl = getLocation().getConfig(ClouderaCdhNode.PACKAGE_MANAGER_MIRROR_URL);
+        if (!Strings.isNullOrEmpty(packageManagerMirrorUrl)) {
+           String failure = String.format("(echo \"WARNING: no known/successful way found to install package manager mirror\")");
+           commands.add(installPackageManagerMirrorOnDebianAndUbuntu(packageManagerMirrorUrl));
+           commands.add(installPackageManagerMirrorOnRedHatAndDerivatives(packageManagerMirrorUrl));
+           newScript(INSTALLING + ":setPackageManagerMirror").body.append(CommonCommands.alternatives(commands, failure)).execute();
+        }
+        /*
+        if(!Strings.isNullOrEmpty(packageManagerMirrorUrl)) {
+           if(isPackageManagerAvailable("apt-get")) {
+            InputStream proxy = generateAptMirrorFile(packageManagerMirrorUrl);
+            getMachine().copyTo(proxy, "/tmp/02proxy");
+            newScript(INSTALLING+":setAptProxy")
+                .body.append(CommonCommands.sudo("mv /tmp/02proxy /etc/apt/apt.conf.d/02proxy"))
+                .execute();
+           } else if (isPackageManagerAvailable("yum")) {
+              commands.add("cd scm_prepare_node.X/repos/");
+           }
+        }
+         */
     }
 
-    private InputStream generatePackageManagerProxyFile(String aptProxyUrl) {
-        InputStream proxy = Preconditions.checkNotNull(new ResourceUtils(this).getResourceFromUrl("02proxy"), "cannot find 02proxy");
-        try {
-            String template = CharStreams.toString(new InputStreamReader(proxy));
-            String aptProxy = template.replaceFirst("ip-address", aptProxyUrl);
-            log.debug("PackageManagerProxy set up at: " + aptProxy);
-            return new ByteArrayInputStream(aptProxy.getBytes("UTF-8"));
-        } catch (IOException e) {
-            throw Throwables.propagate(e);
-        }
-    }
-    
-    protected String getManagerHostname() {
+
+   private String installPackageManagerMirrorOnDebianAndUbuntu(String packageManagerMirrorUrl) {
+      InputStream proxy = generateAptMirrorFile(packageManagerMirrorUrl);
+      getMachine().copyTo(proxy, "/tmp/02proxy");
+      return exists("apt-get", CommonCommands.sudo("mv /tmp/02proxy /etc/apt/apt.conf.d/02proxy"));
+   }
+
+   private String installPackageManagerMirrorOnRedHatAndDerivatives(String packageManagerMirrorUrl) {
+      String mirrorHostname = Iterables.get(Splitter.on("//").split(packageManagerMirrorUrl), 1);
+      return exists("yum", "unset OS_MAJOR; OS_MAJOR=`head -1 /etc/issue | awk '{ print $3 }' | cut -d'.' -f1`",
+            "cd /tmp/scm_prepare_node.X/repos/rhel$OS_MAJOR/",
+            String.format("sed -i 's=archive.cloudera.com=%s=g' ./cloudera-cdh4.repo", mirrorHostname),
+            String.format("sed -i 's=archive.cloudera.com=%s=g' ./cloudera-manager.repo", mirrorHostname),
+            sudo("yum clean all"));
+   }
+
+   protected String getManagerHostname() {
         try {
             return DependentConfiguration.waitForTask(
                 DependentConfiguration.attributeWhenReady(getManager(), ClouderaManagerNode.CLOUDERA_MANAGER_HOSTNAME),
@@ -224,4 +246,32 @@ public class ClouderaCdhNodeSshDriver extends AbstractSoftwareProcessSshDriver i
       return null;
    }
 
+   private InputStream generateAptMirrorFile(String packageManagerMirrorUrl) {
+      InputStream mirror = Preconditions.checkNotNull(new ResourceUtils(this).getResourceFromUrl("02proxy"),
+            "cannot find 02proxy");
+      try {
+         String template = CharStreams.toString(new InputStreamReader(mirror));
+         String proxy = template.replaceFirst("ip-address", packageManagerMirrorUrl);
+         log.debug("PackageManagerProxy set up at: " + proxy);
+         return new ByteArrayInputStream(proxy.getBytes("UTF-8"));
+      } catch (IOException e) {
+         log.error("Cannot generate a mirror file for the package manager in use.", e);
+         throw Throwables.propagate(e);
+      }
+   }
+   
+   private boolean isPackageManagerAvailable(String packageManagerName) {
+      if (log.isTraceEnabled())
+         log.trace("Check if {} is available via ssh for {}", packageManagerName, this);
+      String command = "which " + packageManagerName;
+      ByteArrayOutputStream stdout = new ByteArrayOutputStream();
+      ByteArrayOutputStream stderr = new ByteArrayOutputStream();
+
+      int exitStatus = execute(MutableMap.of("out", stdout, "err", stderr), ImmutableList.of(command), "check" + packageManagerName);
+      String stdouts = new String(stdout.toByteArray());
+      String stderrs = new String(stderr.toByteArray());
+
+      log.info("{} is not available for {} (got {}; {})", new Object[] { packageManagerName, this, stdouts, stderrs });
+      return exitStatus == 0 ? true : false;
+   }
 }
