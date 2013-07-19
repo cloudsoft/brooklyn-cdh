@@ -29,11 +29,13 @@ import com.google.common.collect.Sets;
 
 public class ClouderaServiceImpl extends AbstractEntity implements ClouderaService {
 
-    private static final Logger log = LoggerFactory.getLogger(ClouderaServiceImpl.class);
+   private static final Logger log = LoggerFactory.getLogger(ClouderaServiceImpl.class);
         
-    static {
-        RendererHints.register(ClouderaService.SERVICE_URL, new RendererHints.NamedActionWithUrl("Open"));
-    }
+   private FunctionFeed feed;
+   
+   static {
+       RendererHints.register(ClouderaService.SERVICE_URL, new RendererHints.NamedActionWithUrl("Open"));
+   }
 
     public ClouderaRestCaller getApi() {
         return ClouderaRestCaller.newInstance(getConfig(MANAGER).getAttribute(ClouderaManagerNode.CLOUDERA_MANAGER_HOSTNAME), "admin", "admin");
@@ -63,8 +65,13 @@ public class ClouderaServiceImpl extends AbstractEntity implements ClouderaServi
         connectSensors();
     }
     
+    public void disconnectSensors() {
+       if (feed != null)
+          feed.stop();
+    }
+    
     protected void connectSensors() {
-        FunctionFeed feed = FunctionFeed.builder()
+        feed = FunctionFeed.builder()
                 .entity(this)
                 .poll(new FunctionPollConfig<Boolean,Boolean>(SERVICE_REGISTERED)
                     .period(30, TimeUnit.SECONDS)
@@ -151,6 +158,8 @@ public class ClouderaServiceImpl extends AbstractEntity implements ClouderaServi
                     )
                 .build();
     }
+        
+    
     
     String getClusterName() { return getAttribute(CLUSTER_NAME); }
     String getServiceName() { return getAttribute(SERVICE_NAME); }
@@ -176,6 +185,7 @@ public class ClouderaServiceImpl extends AbstractEntity implements ClouderaServi
             log.debug("Ignoring stop when already stopped at " + this);
             return;
         }
+        disconnectSensors();
         setAttribute(SERVICE_STATE, Lifecycle.STOPPING);
         invokeServiceCommand("stop");
         setAttribute(SERVICE_STATE, Lifecycle.STOPPED);

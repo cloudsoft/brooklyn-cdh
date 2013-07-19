@@ -16,8 +16,8 @@ public class HpCloudComputeLiveTest extends AbstractCloudLiveTest {
    private static final String NAMED_LOCATION = "hpcloud-compute";
    private static final String REGION_NAME = "az-1.region-a.geo-1";
    private static final String LOGIN_USER = "ubuntu";
-   private static final String HARDWARE_ID = "103";
-   private static final String IMAGE_ID = "81078";
+   private static final String HARDWARE_ID = "103";   // standard.large – 4 vCPU / 8 GB RAM / 240 GB HD
+   private static final String IMAGE_ID = "81078";    // 81078 – Ubuntu Server 12.04.2 LTS (amd64 20130318) - Partner Image
    
    private final BrooklynProperties brooklynProperties = BrooklynProperties.Factory.newDefault();
    
@@ -29,7 +29,8 @@ public class HpCloudComputeLiveTest extends AbstractCloudLiveTest {
    @Override
    public Map<String, ?> getFlags() {
       return MutableMap.of(
-            "identity", getIdentity(), "credential", getCredential(), 
+            "identity", getIdentity(), 
+            "credential", getCredential(), 
             "imageId", REGION_NAME + "/" + IMAGE_ID, 
             "loginUser", LOGIN_USER, "hardwareId", 
             REGION_NAME + "/" + HARDWARE_ID);
