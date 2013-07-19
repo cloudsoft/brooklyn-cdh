@@ -47,6 +47,8 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
         RendererHints.register(CLOUDERA_MANAGER_URL, new RendererHints.NamedActionWithUrl("Open"));
     }
 
+    private FunctionFeed sensorFeed;
+
     @Override
     public Class getDriverInterface() {
         return DirectClouderaManagerDriver.class;
@@ -138,11 +140,12 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
         return null;
     }
 
+    @Override
     public void connectSensors() {
 //        if (sensorRegistry==null) sensorRegistry = new SensorRegistry(this);
 //        ConfigSensorAdapter.apply(this);
 
-        FunctionFeed feed = FunctionFeed.builder()
+        sensorFeed = FunctionFeed.builder()
                 .entity(this)
                 .poll(new FunctionPollConfig<Boolean,Boolean>(SERVICE_UP)
                         .period(15, TimeUnit.SECONDS)
@@ -184,7 +187,15 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
         
 //        sensorRegistry.activateAdapters();
     }
-    
+
+    @Override
+    public void disconnectSensors() {
+        disconnectServiceUpIsRunning();
+        if (sensorFeed != null) {
+            sensorFeed.stop();
+        }
+    }
+
     public static void authorizeIngress(ComputeServiceContext computeServiceContext,
         Set<Instance> instances, ClusterSpec clusterSpec, List<String> cidrs, int... ports) {
         
