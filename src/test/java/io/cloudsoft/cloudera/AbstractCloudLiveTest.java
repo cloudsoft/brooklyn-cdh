@@ -69,6 +69,12 @@ public abstract class AbstractCloudLiveTest {
            Map<String, ?> flags = getFlags();
            location = ctx.getLocationRegistry().resolve(getLocation(), flags);
            log.info("Started CDH deployment on '" + location +"'");
+           for (String flag : flags.keySet()) {
+              log.info("flag - {} = {}", flag, flags.get(flag));
+           }
+           for (String config : ctx.getConfig().asMapWithStringKeys().keySet()) {
+              log.info("config - {} = {}", config, ctx.getConfig().asMapWithStringKeys().get(config));
+           }
            app.start(Arrays.asList(location));
            EntityTestUtils.assertAttributeEqualsEventually(app, Startable.SERVICE_UP, true);
        } catch (Exception e) {
@@ -79,7 +85,6 @@ public abstract class AbstractCloudLiveTest {
 
    @AfterClass
    public void afterClass() throws Exception {
-      //app.stop();
       Entities.destroyAll(ctx);
    }
    
