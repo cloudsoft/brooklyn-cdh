@@ -1,6 +1,5 @@
 package io.cloudsoft.cloudera.brooklynnodes;
 
-import static com.google.common.base.Preconditions.checkNotNull;
 import static io.cloudsoft.cloudera.brooklynnodes.ClouderaManagerNode.log;
 import io.cloudsoft.cloudera.rest.ClouderaRestCaller;
 
@@ -18,12 +17,13 @@ import org.jclouds.aws.util.AWSUtils;
 import org.jclouds.compute.ComputeServiceContext;
 import org.jclouds.compute.domain.OsFamily;
 import org.jclouds.ec2.EC2ApiMetadata;
+import org.jclouds.ec2.EC2AsyncClient;
 import org.jclouds.ec2.EC2Client;
 import org.jclouds.ec2.domain.IpProtocol;
 import org.jclouds.ec2.domain.Reservation;
 import org.jclouds.ec2.domain.RunningInstance;
 import org.jclouds.googlecomputeengine.GoogleComputeEngineApiMetadata;
-import org.jclouds.openstack.nova.v2_0.config.NovaProperties;
+import org.jclouds.rest.RestContext;
 
 import brooklyn.config.render.RendererHints;
 import brooklyn.entity.Entity;
@@ -32,7 +32,6 @@ import brooklyn.event.feed.function.FunctionFeed;
 import brooklyn.event.feed.function.FunctionPollConfig;
 import brooklyn.location.Location;
 import brooklyn.location.MachineProvisioningLocation;
-import brooklyn.location.cloud.CloudLocationConfig;
 import brooklyn.location.jclouds.JcloudsLocation;
 import brooklyn.location.jclouds.JcloudsLocationConfig;
 import brooklyn.location.jclouds.JcloudsSshMachineLocation;
@@ -41,6 +40,7 @@ import brooklyn.util.MutableMap;
 import brooklyn.util.MutableSet;
 import brooklyn.util.exceptions.Exceptions;
 import brooklyn.util.internal.Repeater;
+import brooklyn.util.net.Cidr;
 
 import com.google.common.base.Functions;
 import com.google.common.collect.Iterables;
@@ -132,7 +132,7 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
             cmHost = getAttribute(HOSTNAME);
         }
         try {
-            authorizePing("0.0.0.0/0", Iterables.getFirst(getLocations(), null));
+            authorizePing(new Cidr(), Iterables.getFirst(getLocations(), null));
         } catch (Throwable t) {
             log.warn("can't setup firewall/ping: "+t, t);
         }
@@ -229,7 +229,7 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
     }    
     
     public static void authorizeIngress(ComputeServiceContext computeServiceContext,
-        Set<Instance> instances, ClusterSpec clusterSpec, List<String> cidrs, int... ports) {
+        Set<Instance> instances, ClusterSpec clusterSpec, List<Cidr> cidrs, int... ports) {
         
         if (EC2ApiMetadata.CONTEXT_TOKEN.isAssignableFrom(computeServiceContext.getBackendType())) {
 //        from:
@@ -241,12 +241,12 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
             String region = AWSUtils.parseHandle(Iterables.get(instances, 0).getId())[0];
             EC2Client ec2Client = computeServiceContext.unwrap(EC2ApiMetadata.CONTEXT_TOKEN).getApi();
             String groupName = "jclouds#" + clusterSpec.getClusterName();
-            for (String cidr : cidrs) {
+            for (Cidr cidr : cidrs) {
                 for (int port : ports) {
                     try {
                         ec2Client.getSecurityGroupServices()
                                 .authorizeSecurityGroupIngressInRegion(region, groupName,
-                                IpProtocol.TCP, port, port, cidr);
+                                IpProtocol.TCP, port, port, cidr.toString());
                     } catch(IllegalStateException e) {
                         LOG.warn(e.getMessage());
                         /* ignore, it means that this permission was already granted */
@@ -259,7 +259,7 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
         }
     }
         
-    private void authorizePing(String cidr, Location ssh) {
+    private void authorizePing(Cidr cidr, Location ssh) {
         JcloudsLocation jcl = null;
         JcloudsSshMachineLocation jclssh = null;
         if (ssh instanceof JcloudsSshMachineLocation) {
@@ -268,25 +268,20 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
         }
         if (jcl!=null) {
             ComputeServiceContext ctx = jcl.getComputeService().getContext();
-            if (ctx.unwrap() instanceof EC2Client) {
-                // This code (or something like it) may be added to jclouds (see
-                // http://code.google.com/p/jclouds/issues/detail?id=336).
-                // Until then we need this temporary workaround.
-//                String region = AWSUtils.parseHandle(Iterables.get(instances, 0).getId())[0];
+            if (ctx.unwrap().getProviderMetadata().getId().equals("aws-ec2")) {
+               String region = jcl.getRegion();
                 try {
-                    String region = jcl.getRegion();
-                    EC2Client ec2Client = EC2Client.class.cast(ctx.unwrap());
+                    RestContext<EC2Client, EC2AsyncClient> ec2Client = ctx.unwrap();
                     String id = jclssh.getNode().getId();
                     // string region prefix from id
                     if (id.indexOf('/')>=0) id = id.substring(id.indexOf('/')+1);
-                    Set<? extends Reservation<? extends RunningInstance>> instances = ec2Client.getInstanceServices().describeInstancesInRegion(region, id);
+                    Set<? extends Reservation<? extends RunningInstance>> instances = ec2Client.getApi().getInstanceServices().describeInstancesInRegion(region, id);
                     Set<String> groupNames = Iterables.getOnlyElement(instances).getGroupNames(); 
                     String groupName = Iterables.getFirst(groupNames, null);
-                    //                  "jclouds#" + clusterSpec.getClusterName(); // + "#" + region;
+                    // "jclouds#" + clusterSpec.getClusterName(); // + "#" + region;
                     log.info("Authorizing ping for "+groupName+": "+cidr);
-                    ec2Client.getSecurityGroupServices()
-                        .authorizeSecurityGroupIngressInRegion(region, groupName,
-                            IpProtocol.ICMP, -1, -1, cidr);
+                    ec2Client.getApi().getSecurityGroupServices().authorizeSecurityGroupIngressInRegion(region, 
+                          groupName, IpProtocol.ICMP, -1, -1, cidr.toString());
                     return;
                 } catch(Exception e) {
                     log.warn("Problem authorizing ping (possibly already authorized) for "+this+": "+e.getMessage());
