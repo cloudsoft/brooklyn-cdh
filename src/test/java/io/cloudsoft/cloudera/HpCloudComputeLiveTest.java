@@ -4,14 +4,15 @@ import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testng.annotations.Test;
 
 import brooklyn.config.BrooklynProperties;
 import brooklyn.util.collections.MutableMap;
 
+@Test(groups="Live")
 public class HpCloudComputeLiveTest extends AbstractCloudLiveTest {
 
    protected static final Logger log = LoggerFactory.getLogger(HpCloudComputeLiveTest.class);
-
 
    private static final String NAMED_LOCATION = "hpcloud-compute";
    private static final String REGION_NAME = "az-1.region-a.geo-1";

@@ -10,15 +10,11 @@ import brooklyn.config.BrooklynProperties;
 import brooklyn.util.collections.MutableMap;
 
 @Test(groups="Live")
-public class IBMSmartCloudLiveTest extends AbstractCloudLiveTest {
+public class Ec2LiveTest extends AbstractCloudLiveTest {
 
-   protected static final Logger log = LoggerFactory.getLogger(IBMSmartCloudLiveTest.class);
+   protected static final Logger log = LoggerFactory.getLogger(Ec2LiveTest.class);
 
-   private static final String NAMED_LOCATION = "ibm-smartcloud";
-   private static final String REGION_NAME = "RegionOne";
-   private static final String LOGIN_USER = "idcuser";
-   private static final String HARDWARE_ID = "9";
-   private static final String IMAGE_ID = "eeced716-bb37-4f3b-a3d6-977e17f20b21";
+   private static final String NAMED_LOCATION = "aws-ec2";
 
    private final BrooklynProperties brooklynProperties = BrooklynProperties.Factory.newDefault();
    
@@ -30,10 +26,7 @@ public class IBMSmartCloudLiveTest extends AbstractCloudLiveTest {
    @Override
    public Map<String, ?> getFlags() {
       return MutableMap.of(
-            "identity", getIdentity(), "credential", getCredential(), 
-            "imageId", REGION_NAME + "/" + IMAGE_ID, 
-            "loginUser", LOGIN_USER, "hardwareId", 
-            REGION_NAME + "/" + HARDWARE_ID);
+            "identity", getIdentity(), "credential", getCredential());
    }
 
    private String getIdentity() {

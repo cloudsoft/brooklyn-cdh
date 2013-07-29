@@ -85,7 +85,6 @@ public abstract class AbstractCloudLiveTest {
 
    @AfterClass
    public void afterClass() throws Exception {
-      //app.stop();
       Entities.destroyAll(ctx);
    }
    
