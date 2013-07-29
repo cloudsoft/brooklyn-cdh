@@ -1,18 +1,17 @@
-<configuration>
+<included>
 
   <appender name="FILE" class="ch.qos.logback.core.FileAppender">
-    <file>brooklyn-cdh.log</file>
+    <file>brooklyn-cloudera.log</file>
     <append>true</append>
     <encoder>
       <pattern>%d %-5level %logger{30} [%thread{15}]: %msg%n</pattern>
     </encoder>
   </appender>
 
+  <!-- use default stdout settings from brooklyn -->
   <include resource="brooklyn/logback-stdout.xml"/>
 
+  <!-- as well as default brooklyn categories -->
   <include resource="brooklyn/logback-excludes.xml"/>
-  <include resource="brooklyn/logback-debug.xml"/>
- 
-  <logger name="io.cloudsoft" level="DEBUG"/>
     
-</configuration>
+</included>
