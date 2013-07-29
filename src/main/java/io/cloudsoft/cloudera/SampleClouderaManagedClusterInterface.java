@@ -1,12 +1,12 @@
 package io.cloudsoft.cloudera;
 
-import brooklyn.entity.basic.Description;
+import io.cloudsoft.cloudera.brooklynnodes.ClouderaManagerNode;
+import brooklyn.entity.annotation.Effector;
+import brooklyn.entity.annotation.EffectorParam;
 import brooklyn.entity.basic.MethodEffector;
-import brooklyn.entity.basic.NamedParameter;
 import brooklyn.entity.basic.StartableApplication;
 import brooklyn.entity.proxying.ImplementedBy;
 import brooklyn.event.AttributeSensor;
-import io.cloudsoft.cloudera.brooklynnodes.ClouderaManagerNode;
 
 @ImplementedBy(SampleClouderaManagedCluster.class)
 public interface SampleClouderaManagedClusterInterface extends StartableApplication {
@@ -14,10 +14,10 @@ public interface SampleClouderaManagedClusterInterface extends StartableApplicat
     MethodEffector<Void> START_SERVICES = new MethodEffector<Void>(
             SampleClouderaManagedClusterInterface.class, "startServices");
 
-    @Description("Start the Cloudera services")
+    @Effector(description="Start the Cloudera services")
     public void startServices(
-            @NamedParameter("isCertificationCluster") boolean isCertificationCluster,
-            @NamedParameter("includeHbase") boolean includeHbase);
+            @EffectorParam(name="isCertificationCluster") boolean isCertificationCluster,
+            @EffectorParam(name="includeHbase") boolean includeHbase);
 
     public static final AttributeSensor<String> CLOUDERA_MANAGER_URL = ClouderaManagerNode.CLOUDERA_MANAGER_URL;
     

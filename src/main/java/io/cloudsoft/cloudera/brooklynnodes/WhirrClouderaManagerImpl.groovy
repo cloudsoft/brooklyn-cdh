@@ -27,8 +27,8 @@ import brooklyn.extras.whirr.core.WhirrClusterImpl
 import brooklyn.location.Location
 import brooklyn.location.jclouds.JcloudsLocation
 import brooklyn.util.GroovyJavaMethods
-import brooklyn.util.NetworkUtils
 import brooklyn.util.internal.Repeater
+import brooklyn.util.net.Networking;
 
 import com.google.common.base.Functions;
 import com.google.common.base.Joiner
@@ -94,7 +94,7 @@ public class WhirrClouderaManagerImpl extends WhirrClusterImpl implements WhirrC
         String cmHost = cmServer.publicHostName
         // the above can come back being the internal hostname, in some situations
         try {
-            InetAddress addr = NetworkUtils.resolve(cmHost);
+            InetAddress addr = Networking.resolve(cmHost);
             if (addr==null) throw new NullPointerException("Cannot resolve "+cmHost);
             log.debug("Whirr-reported hostname "+cmHost+" for "+this+" resolved as "+addr);
         } catch (Exception e) {
