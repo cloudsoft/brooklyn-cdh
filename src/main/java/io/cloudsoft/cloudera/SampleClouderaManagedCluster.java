@@ -46,15 +46,15 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
     static final String DEFAULT_LOCATION = "aws-ec2:us-east-1";
     
     @CatalogConfig(label="Number of CDH nodes", priority=2)
-    private static final ConfigKey<Integer> INITIAL_SIZE_NODES = ConfigKeys.newIntegerConfigKey("cdh.initial.node.count", 
+    public static final ConfigKey<Integer> INITIAL_SIZE_NODES = ConfigKeys.newIntegerConfigKey("cdh.initial.node.count", 
             "Number of CDH nodes to deploy initially", 4);
 
     @CatalogConfig(label="Certification cluster (metrics enabled)", priority=4)
-    private static final ConfigKey<Boolean> DEPLOY_CERTIFICATION_CLUSTER = ConfigKeys.newBooleanConfigKey("cdh.certificationCluster",
+    public static final ConfigKey<Boolean> DEPLOY_CERTIFICATION_CLUSTER = ConfigKeys.newBooleanConfigKey("cdh.certificationCluster",
             "Whether to deploy a certification cluster, i.e. enable metrics collection", true);
     
     @CatalogConfig(label="Deploy HBase", priority=4)
-    private static final ConfigKey<Boolean> DEPLOY_HBASE = ConfigKeys.newBooleanConfigKey("cdh.initial.services.hbase",
+    public static final ConfigKey<Boolean> DEPLOY_HBASE = ConfigKeys.newBooleanConfigKey("cdh.initial.services.hbase",
             "Whether to deploy HBase as part of initial services roll-out", false);
 
     // Admin - Cloudera Manager Node
