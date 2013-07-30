@@ -21,12 +21,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import brooklyn.catalog.Catalog;
-import brooklyn.catalog.CatalogConfig;
-import brooklyn.config.ConfigKey;
 import brooklyn.enricher.basic.SensorPropagatingEnricher;
 import brooklyn.entity.Entity;
 import brooklyn.entity.basic.AbstractApplication;
-import brooklyn.entity.basic.ConfigKeys;
 import brooklyn.entity.basic.Entities;
 import brooklyn.entity.group.DynamicCluster;
 import brooklyn.entity.proxying.BasicEntitySpec;
@@ -42,20 +39,7 @@ import com.google.common.collect.Lists;
 public class SampleClouderaManagedCluster extends AbstractApplication implements SampleClouderaManagedClusterInterface {
 
     static final Logger log = LoggerFactory.getLogger(SampleClouderaManagedCluster.class);
-    
     static final String DEFAULT_LOCATION = "aws-ec2:us-east-1";
-    
-    @CatalogConfig(label="Number of CDH nodes", priority=2)
-    private static final ConfigKey<Integer> INITIAL_SIZE_NODES = ConfigKeys.newIntegerConfigKey("cdh.initial.node.count", 
-            "Number of CDH nodes to deploy initially", 4);
-
-    @CatalogConfig(label="Certification cluster (metrics enabled)", priority=4)
-    private static final ConfigKey<Boolean> DEPLOY_CERTIFICATION_CLUSTER = ConfigKeys.newBooleanConfigKey("cdh.certificationCluster",
-            "Whether to deploy a certification cluster, i.e. enable metrics collection", true);
-    
-    @CatalogConfig(label="Deploy HBase", priority=4)
-    private static final ConfigKey<Boolean> DEPLOY_HBASE = ConfigKeys.newBooleanConfigKey("cdh.initial.services.hbase",
-            "Whether to deploy HBase as part of initial services roll-out", false);
 
     // Admin - Cloudera Manager Node
     protected Entity admin;
@@ -105,7 +89,6 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
         super.start(locations);
         startServices(getConfig(DEPLOY_CERTIFICATION_CLUSTER), getConfig(DEPLOY_HBASE));
     }
-    
     
     @Override
     public void launchDefaultServices(boolean enabled) {
