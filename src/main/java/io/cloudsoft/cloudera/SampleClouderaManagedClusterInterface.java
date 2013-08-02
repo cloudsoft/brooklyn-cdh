@@ -1,5 +1,7 @@
 package io.cloudsoft.cloudera;
 
+import brooklyn.config.ConfigKey;
+import brooklyn.entity.basic.ConfigKeys;
 import brooklyn.entity.basic.Description;
 import brooklyn.entity.basic.MethodEffector;
 import brooklyn.entity.basic.NamedParameter;
@@ -10,6 +12,8 @@ import io.cloudsoft.cloudera.brooklynnodes.ClouderaManagerNode;
 
 @ImplementedBy(SampleClouderaManagedCluster.class)
 public interface SampleClouderaManagedClusterInterface extends StartableApplication {
+
+    public static final ConfigKey<Boolean> SETUP_DNS = ConfigKeys.newBooleanConfigKey("cdh.setupDns", "Whether to set up internal DNS", true);
 
     MethodEffector<Void> START_SERVICES = new MethodEffector<Void>(
             SampleClouderaManagedClusterInterface.class, "startServices");

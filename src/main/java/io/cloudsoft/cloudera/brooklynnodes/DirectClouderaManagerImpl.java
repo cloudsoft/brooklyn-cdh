@@ -11,12 +11,8 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.whirr.Cluster.Instance;
-import org.apache.whirr.ClusterSpec;
-import org.jclouds.aws.util.AWSUtils;
 import org.jclouds.compute.ComputeServiceContext;
 import org.jclouds.compute.domain.OsFamily;
-import org.jclouds.ec2.EC2ApiMetadata;
 import org.jclouds.ec2.EC2AsyncClient;
 import org.jclouds.ec2.EC2Client;
 import org.jclouds.ec2.domain.IpProtocol;
@@ -224,38 +220,7 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
       super.disconnectSensors();
       if (functionFeed != null) functionFeed.stop();
     }    
-    
-    public static void authorizeIngress(ComputeServiceContext computeServiceContext,
-        Set<Instance> instances, ClusterSpec clusterSpec, List<Cidr> cidrs, int... ports) {
-        
-        if (EC2ApiMetadata.CONTEXT_TOKEN.isAssignableFrom(computeServiceContext.getBackendType())) {
-//        from:
-//            FirewallManager.authorizeIngress(computeServiceContext, instances, clusterSpec, cidrs, ports);
-            
-            // This code (or something like it) may be added to jclouds (see
-            // http://code.google.com/p/jclouds/issues/detail?id=336).
-            // Until then we need this temporary workaround.
-            String region = AWSUtils.parseHandle(Iterables.get(instances, 0).getId())[0];
-            EC2Client ec2Client = computeServiceContext.unwrap(EC2ApiMetadata.CONTEXT_TOKEN).getApi();
-            String groupName = "jclouds#" + clusterSpec.getClusterName();
-            for (Cidr cidr : cidrs) {
-                for (int port : ports) {
-                    try {
-                        ec2Client.getSecurityGroupServices()
-                                .authorizeSecurityGroupIngressInRegion(region, groupName,
-                                IpProtocol.TCP, port, port, cidr.toString());
-                    } catch(IllegalStateException e) {
-                        LOG.warn(e.getMessage());
-                        /* ignore, it means that this permission was already granted */
-                    }
-                }
-            }
-        } else {
-            // TODO generalise the above, or support more clouds, or bypass whirr
-            LOG.debug("Skipping port ingress modifications for "+instances+" in cloud "+computeServiceContext.getBackendType());
-        }
-    }
-        
+           
     private void authorizePing(Cidr cidr, Location ssh) {
         JcloudsLocation jcl = null;
         JcloudsSshMachineLocation jclssh = null;

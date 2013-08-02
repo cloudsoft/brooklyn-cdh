@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 
 import brooklyn.config.ConfigKey;
 import brooklyn.entity.Entity;
+import brooklyn.entity.basic.ConfigKeys;
 import brooklyn.event.AttributeSensor;
 import brooklyn.event.basic.BasicAttributeSensor;
 import brooklyn.event.basic.BasicConfigKey;
@@ -17,7 +18,7 @@ import brooklyn.util.flags.SetFromFlag;
 public interface ClouderaManagerNode extends Entity {
 
     public static final Logger log = LoggerFactory.getLogger(ClouderaManagerNode.class);
-
+    
     @SetFromFlag("name")
     public static final ConfigKey<String> NAME = new BasicConfigKey<String>(
     		String.class, "cloudera.manager.name", "The name of the CM cluster");

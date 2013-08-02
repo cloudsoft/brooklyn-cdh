@@ -3,6 +3,7 @@ package io.cloudsoft.cloudera.brooklynnodes;
 
 import brooklyn.config.ConfigKey;
 import brooklyn.entity.Effector;
+import brooklyn.entity.basic.ConfigKeys;
 import brooklyn.entity.basic.Description;
 import brooklyn.entity.basic.MethodEffector;
 import brooklyn.entity.basic.NamedParameter;

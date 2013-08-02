@@ -29,12 +29,14 @@ import brooklyn.entity.basic.AbstractApplication;
 import brooklyn.entity.basic.ConfigKeys;
 import brooklyn.entity.basic.Entities;
 import brooklyn.entity.group.DynamicCluster;
+import brooklyn.entity.network.bind.BindDnsServer;
 import brooklyn.entity.proxying.BasicEntitySpec;
 import brooklyn.entity.proxying.EntitySpecs;
 import brooklyn.launcher.BrooklynLauncher;
 import brooklyn.location.Location;
 import brooklyn.util.CommandLineUtil;
 
+import com.google.common.base.Predicates;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.Lists;
 
@@ -62,7 +64,8 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
     protected ClouderaManagerNode clouderaManagerNode;
     protected DynamicCluster workerCluster;
     protected AllServices services;    
-    
+    protected BindDnsServer dnsServer;
+
     boolean launchDefaultServices = true;
 
     public StartupGroup getAdmin() {
@@ -79,6 +82,13 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
 
     @Override
     public void init() {
+        if (getConfig(SETUP_DNS)) {
+           dnsServer = addChild(EntitySpecs.spec(BindDnsServer.class).displayName("dns-server")
+                   .configure("filter", Predicates.or(Predicates.instanceOf(ClouderaManagerNode.class), Predicates.instanceOf(ClouderaCdhNode.class)))
+                   .configure("domainName", "jclouds.org")
+                   .configure("hostnameSensor", ClouderaManagerNode.LOCAL_HOSTNAME));
+        }
+        
         admin = addChild(EntitySpecs.spec(StartupGroup.class).displayName("Cloudera Hosts and Admin"));
 
         clouderaManagerNode = (ClouderaManagerNode) admin.addChild(getEntityManager().createEntity(
