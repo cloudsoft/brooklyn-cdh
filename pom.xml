@@ -33,7 +33,7 @@
 			<version>${brooklyn.version}</version>
 			<exclusions>
 				<exclusion>
-					<groupId>org.apache.jclouds.provider</groupId>
+					<groupId>org.jclouds.provider</groupId>
 					<artifactId>softlayer</artifactId>
 				</exclusion>
 				<exclusion>

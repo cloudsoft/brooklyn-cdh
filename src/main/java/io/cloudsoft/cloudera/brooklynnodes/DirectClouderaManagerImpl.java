@@ -100,14 +100,7 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
             flags.put(JcloudsLocationConfig.TEMPLATE_BUILDER.getName(),
                     portableTemplateBuilder.osFamily(OsFamily.CENTOS).osVersionMatches("6").os64Bit(true)
                     .minRam(2560));
-        } else if (isJcloudsLocation(location, "bluelock-vcloud-zone01")) {
-            System.setProperty("jclouds.vcloud.timeout.task-complete", 600 * 1000 + "");
-            // this is a constraint for dns name on vcloud (3-15 characters)
-            flags.put("groupId", "brooklyn");
-            flags.put(JcloudsLocationConfig.TEMPLATE_BUILDER.getName(),
-            //    portableTemplateBuilder.osFamily(OsFamily.CENTOS).osVersionMatches("6").os64Bit(true));
-            portableTemplateBuilder.imageId("https://zone01.bluelock.com/api/v1.0/vAppTemplate/vappTemplate-e0717fc0-0b7f-41f7-a275-3e03881d99db"));
-            }
+        }
         return flags;
     }
 
