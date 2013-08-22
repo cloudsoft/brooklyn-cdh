@@ -28,7 +28,7 @@ public class AllServicesImpl extends StartupGroupImpl implements AllServices {
     
     protected void collectNodes(Entity root, List<ClouderaCdhNode> list) {
         if (root in ClouderaCdhNode) list.add(root);
-        else for (Entity child: root.ownedChildren) {
+        else for (Entity child: root.children) {
             collectNodes(child, list);
         }
     }
