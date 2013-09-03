@@ -1,7 +1,5 @@
 package io.cloudsoft.cloudera;
 
-import static brooklyn.entity.proxying.EntitySpecs.spec;
-
 import brooklyn.entity.proxying.EntitySpec;
 import io.cloudsoft.cloudera.brooklynnodes.ClouderaManagerNode;
 import io.cloudsoft.cloudera.brooklynnodes.DirectClouderaManager;
@@ -128,8 +126,7 @@ public abstract class AbstractCloudLiveTest {
          if (child.getEntityType().getName().contains("StartupGroup")) {
             for (Entity node : child.getChildren()) {
                if (node.getEntityType().getName().contains("DirectClouderaManager")) {
-                  return Optional.of(((DirectClouderaManager) node)
-                        .getAttribute(ClouderaManagerNode.CLOUDERA_MANAGER_URL));
+                  return Optional.of(node.getAttribute(ClouderaManagerNode.CLOUDERA_MANAGER_URL));
                }
             }
          }

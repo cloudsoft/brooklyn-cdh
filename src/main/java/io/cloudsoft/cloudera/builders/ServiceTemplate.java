@@ -24,7 +24,6 @@ import org.slf4j.LoggerFactory;
 import brooklyn.entity.Entity;
 import brooklyn.entity.basic.Entities;
 import brooklyn.entity.basic.EntityInternal;
-import brooklyn.entity.proxying.BasicEntitySpec;
 import brooklyn.util.collections.MutableMap;
 import brooklyn.util.text.Identifiers;
 

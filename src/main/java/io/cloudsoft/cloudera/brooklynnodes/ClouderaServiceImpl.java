@@ -87,8 +87,7 @@ public class ClouderaServiceImpl extends AbstractEntity implements ClouderaServi
                             }
                         }
                     })
-                    .onError(Functions.constant(false))
-                    )
+                    .onException(Functions.constant(false)))
                 .poll(new FunctionPollConfig<Collection<String>, Collection<String>>(HOSTS)
                         .period(30, TimeUnit.SECONDS).callable(new Callable<Collection<String>>() {
                             @Override
@@ -102,8 +101,7 @@ public class ClouderaServiceImpl extends AbstractEntity implements ClouderaServi
                                 }
                                 return ids;
                             }
-                        })
-                )
+                        }))
                 .poll(new FunctionPollConfig<Collection<String>, Collection<String>>(ROLES)
                     .period(30, TimeUnit.SECONDS)
                     .callable(new Callable<Collection<String>>() {
@@ -118,8 +116,7 @@ public class ClouderaServiceImpl extends AbstractEntity implements ClouderaServi
                             }
                             return types;
                         }
-                    })
-                    )
+                    }))
                 .poll(new FunctionPollConfig<Boolean,Boolean>(SERVICE_UP)
                     .period(30, TimeUnit.SECONDS)
                     .callable(new Callable<Boolean>() {
@@ -135,8 +132,7 @@ public class ClouderaServiceImpl extends AbstractEntity implements ClouderaServi
                             }
                         }
                     })
-                    .onError(Functions.constant(false))
-                    )
+                    .onException(Functions.constant(false)))
                 .poll(new FunctionPollConfig<String, String>(SERVICE_HEALTH)
                     .period(30, TimeUnit.SECONDS)
                     .callable(new Callable<String>() {
@@ -145,8 +141,7 @@ public class ClouderaServiceImpl extends AbstractEntity implements ClouderaServi
                             JSONObject serviceJson = getApi().getServiceJson(getClusterName(), getServiceName());
                             return serviceJson.getString("healthSummary");
                         }
-                    })
-                    )
+                    }))
                 .poll(new FunctionPollConfig<String, String>(SERVICE_URL)
                     .period(30, TimeUnit.SECONDS)
                     .callable(new Callable<String>() {
@@ -155,8 +150,7 @@ public class ClouderaServiceImpl extends AbstractEntity implements ClouderaServi
                             JSONObject serviceJson = getApi().getServiceJson(getClusterName(), getServiceName());
                             return serviceJson.getString("serviceUrl");
                         }
-                    })
-                    )
+                    }))
                 .build();
     }
 
