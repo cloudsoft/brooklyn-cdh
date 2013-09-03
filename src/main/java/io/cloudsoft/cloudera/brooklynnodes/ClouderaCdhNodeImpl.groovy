@@ -1,18 +1,6 @@
 package io.cloudsoft.cloudera.brooklynnodes
 
-import static brooklyn.util.GroovyJavaMethods.elvis
-import static com.google.common.base.Preconditions.checkNotNull
-import static io.cloudsoft.cloudera.brooklynnodes.ClouderaManagerNode.log
-import groovy.transform.InheritConstructors
-
-import java.util.concurrent.Callable
-import java.util.concurrent.TimeUnit
-
-import org.jclouds.compute.domain.OsFamily
-import org.jclouds.googlecomputeengine.GoogleComputeEngineApiMetadata
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
-
+import brooklyn.entity.Entity
 import brooklyn.entity.basic.BasicConfigurableEntityFactory
 import brooklyn.entity.basic.ConfigurableEntityFactory
 import brooklyn.entity.basic.Description
@@ -27,14 +15,34 @@ import brooklyn.location.jclouds.JcloudsLocation
 import brooklyn.location.jclouds.JcloudsLocationConfig
 import brooklyn.location.jclouds.templates.PortableTemplateBuilder
 import brooklyn.util.time.Time
-
 import com.google.common.base.Functions
+import org.jclouds.compute.domain.OsFamily
+import org.jclouds.googlecomputeengine.GoogleComputeEngineApiMetadata
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
-@InheritConstructors
+import java.util.concurrent.Callable
+import java.util.concurrent.TimeUnit
+
 public class ClouderaCdhNodeImpl extends SoftwareProcessImpl implements ClouderaCdhNode {
 
     FunctionFeed feed;
-  
+
+    ClouderaCdhNodeImpl() {
+    }
+
+    ClouderaCdhNodeImpl(Entity parent) {
+        super(parent)
+    }
+
+    ClouderaCdhNodeImpl(Map properties) {
+        super(properties)
+    }
+
+    ClouderaCdhNodeImpl(Map properties, Entity parent) {
+        super(properties, parent)
+    }
+
     @Override
     public void waitForEntityStart() {
         if (log.isDebugEnabled()) log.debug("waiting to ensure {} doesn't abort prematurely", this);
@@ -125,30 +133,28 @@ public class ClouderaCdhNodeImpl extends SoftwareProcessImpl implements Cloudera
         feed = FunctionFeed.builder()
                 .entity(this)
                 .poll(new FunctionPollConfig<Boolean,Boolean>(SERVICE_UP)
-                .period(30, TimeUnit.SECONDS)
-                .callable(new Callable<Boolean>() {
-                    @Override
-                    public Boolean call() throws Exception {
-                        try { 
-                            return getManagedHostId() != null; 
-                        } catch (Exception e) {
-                            log.error(e); 
-                            return false; 
+                    .period(30, TimeUnit.SECONDS)
+                    .callable(new Callable<Boolean>() {
+                        @Override
+                        public Boolean call() throws Exception {
+                            try {
+                                return getManagedHostId() != null;
+                            } catch (Exception e) {
+                                log.error(e);
+                                return false;
+                            }
                         }
-                    }
-                })
-                .onError(Functions.constant(false))
-                )
-                .poll(new FunctionPollConfig<List,List>(CDH_HOST_ID)
-                .period(30, TimeUnit.SECONDS)
-                .callable(new Callable<String>() {
-                    @Override
-                    public String call() throws Exception {
-                        return getManagedHostId();
-                    }
-                })
-                .onError(Functions.constant(false))
-                )
+                    })
+                    .onError(Functions.constant(false)))
+                .poll(new FunctionPollConfig<String, String>(CDH_HOST_ID)
+                    .period(30, TimeUnit.SECONDS)
+                    .callable(new Callable<String>() {
+                        @Override
+                        public String call() throws Exception {
+                            return getManagedHostId();
+                        }
+                    })
+                    .onError(Functions.constant(null)))
                 .build();
     }
     

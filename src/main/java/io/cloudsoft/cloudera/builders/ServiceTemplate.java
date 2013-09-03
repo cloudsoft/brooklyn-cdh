@@ -61,8 +61,7 @@ public abstract class ServiceTemplate<T extends ServiceTemplate<?>> extends Abst
 
     @SuppressWarnings("unchecked")
     public T hosts(String ...hostIds) {
-        for (String hostId: hostIds) 
-            this.hostIds.add(hostId);
+        Collections.addAll(this.hostIds, hostIds);
         return (T)this;
     }
     @SuppressWarnings("unchecked")
@@ -157,7 +156,7 @@ public abstract class ServiceTemplate<T extends ServiceTemplate<?>> extends Abst
         preServiceAddChecks(caller);
        
         caller.addService(clusterName, name, getServiceType());
-        caller.addServiceRoleHosts(clusterName, name, roles.toArray(new ServiceRoleHostInfo[0]));
+        caller.addServiceRoleHosts(clusterName, name, roles.toArray(new ServiceRoleHostInfo[roles.size()]));
         
         Object config = caller.getServiceConfig(clusterName, name);
         Map<?,?> cfgOut = convertConfig(config);
@@ -199,7 +198,9 @@ public abstract class ServiceTemplate<T extends ServiceTemplate<?>> extends Abst
             // pause a bit after creation, to ensure it really is created
             // (not needed, i don't think...)
             Thread.sleep(3000);
-        } catch (InterruptedException e) { Throwables.propagate(e); }
+        } catch (InterruptedException e) {
+            throw Throwables.propagate(e);
+        }
         return result;
     }
     

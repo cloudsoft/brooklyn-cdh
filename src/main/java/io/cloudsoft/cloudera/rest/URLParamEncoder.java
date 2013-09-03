@@ -1,4 +1,6 @@
 package io.cloudsoft.cloudera.rest;
+
+// TODO: Replace this class with one of Guava 15's Escapers when we upgrade from 14.
 public class URLParamEncoder {
 
     public static String encode(String input) {
