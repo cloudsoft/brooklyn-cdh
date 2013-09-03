@@ -1,8 +1,5 @@
 package io.cloudsoft.cloudera.brooklynnodes;
 
-import static io.cloudsoft.cloudera.brooklynnodes.ClouderaManagerNode.log;
-import io.cloudsoft.cloudera.rest.ClouderaRestCaller;
-
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -24,6 +21,11 @@ import org.jclouds.ec2.domain.Reservation;
 import org.jclouds.ec2.domain.RunningInstance;
 import org.jclouds.googlecomputeengine.GoogleComputeEngineApiMetadata;
 import org.jclouds.rest.RestContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.google.common.base.Functions;
+import com.google.common.collect.Iterables;
 
 import brooklyn.config.render.RendererHints;
 import brooklyn.entity.Entity;
@@ -36,18 +38,17 @@ import brooklyn.location.jclouds.JcloudsLocation;
 import brooklyn.location.jclouds.JcloudsLocationConfig;
 import brooklyn.location.jclouds.JcloudsSshMachineLocation;
 import brooklyn.location.jclouds.templates.PortableTemplateBuilder;
-import brooklyn.util.MutableMap;
-import brooklyn.util.MutableSet;
+import brooklyn.util.collections.MutableMap;
+import brooklyn.util.collections.MutableSet;
 import brooklyn.util.exceptions.Exceptions;
 import brooklyn.util.internal.Repeater;
 import brooklyn.util.net.Cidr;
-
-import com.google.common.base.Functions;
-import com.google.common.collect.Iterables;
+import io.cloudsoft.cloudera.rest.ClouderaRestCaller;
 
 public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements DirectClouderaManager {
 
-   
+    private static final Logger LOG = LoggerFactory.getLogger(DirectClouderaManagerImpl.class);
+
     static {
         RendererHints.register(CLOUDERA_MANAGER_URL, new RendererHints.NamedActionWithUrl("Open"));
     }
@@ -67,16 +68,14 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
         return DirectClouderaManagerDriver.class;
     }
 
+    @Override
     protected Collection<Integer> getRequiredOpenPorts() {
         return MutableSet.<Integer>builder().addAll(super.getRequiredOpenPorts()).
                 addAll(Arrays.asList(22, 2181, 7180, 7182, 8088, 8888, 50030, 50060, 50070, 50090, 60010, 60020, 60030)).
                 build();
     }
-    
-    protected Map<String, Object> getProvisioningFlags(MachineProvisioningLocation location) {
-        return obtainProvisioningFlags(location);
-    }
-    
+
+    @Override
     @SuppressWarnings({ "rawtypes", "unchecked" })
     protected Map<String, Object> obtainProvisioningFlags(MachineProvisioningLocation location) {
         Map flags = super.obtainProvisioningFlags(location);
@@ -113,7 +112,7 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
             flags.put(JcloudsLocationConfig.TEMPLATE_BUILDER.getName(),
             //    portableTemplateBuilder.osFamily(OsFamily.CENTOS).osVersionMatches("6").os64Bit(true));
             portableTemplateBuilder.imageId("https://zone01.bluelock.com/api/v1.0/vAppTemplate/vappTemplate-e0717fc0-0b7f-41f7-a275-3e03881d99db"));
-            }
+        }
         return flags;
     }
 

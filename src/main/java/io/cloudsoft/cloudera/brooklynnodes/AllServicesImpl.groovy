@@ -7,8 +7,10 @@ import brooklyn.entity.Entity
 import brooklyn.entity.basic.Description
 import brooklyn.entity.basic.MethodEffector
 
-@InheritConstructors
 public class AllServicesImpl extends StartupGroupImpl implements AllServices {
+
+    AllServicesImpl() {
+    }
 
     /**
      * Start the entity in the given collection of locations.

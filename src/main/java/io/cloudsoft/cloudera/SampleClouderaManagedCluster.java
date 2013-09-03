@@ -1,5 +1,6 @@
 package io.cloudsoft.cloudera;
 
+import brooklyn.entity.proxying.EntitySpec;
 import io.cloudsoft.cloudera.brooklynnodes.AllServices;
 import io.cloudsoft.cloudera.brooklynnodes.ClouderaCdhNode;
 import io.cloudsoft.cloudera.brooklynnodes.ClouderaCdhNodeImpl;
@@ -79,14 +80,13 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
 
     @Override
     public void init() {
-        admin = addChild(EntitySpecs.spec(StartupGroup.class).displayName("Cloudera Hosts and Admin"));
+        admin = addChild(EntitySpec.create(StartupGroup.class).displayName("Cloudera Hosts and Admin"));
 
-        clouderaManagerNode = (ClouderaManagerNode) admin.addChild(getEntityManager().createEntity(
-                EntitySpecs.spec(DirectClouderaManager.class)));
+        clouderaManagerNode = admin.addChild(getEntityManager().createEntity(
+                EntitySpec.create(DirectClouderaManager.class)));
 
-        workerCluster = (DynamicCluster) admin.addChild(getEntityManager().createEntity(
-                EntitySpecs
-                        .spec(DynamicCluster.class)
+        workerCluster = admin.addChild(getEntityManager().createEntity(
+                EntitySpec.create(DynamicCluster.class)
                         .displayName("CDH Nodes")
                         .configure(
                                 "factory",
@@ -94,8 +94,8 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
                                         .setConfig(ClouderaCdhNode.MANAGER, clouderaManagerNode))
                         .configure("initialSize", getConfig(INITIAL_SIZE_NODES))));
 
-        services = (AllServices) addChild(getEntityManager().createEntity(
-                BasicEntitySpec.newInstance(AllServices.class).displayName("Cloudera Services")));
+        services = addChild(getEntityManager().createEntity(
+                EntitySpec.create(AllServices.class).displayName("Cloudera Services")));
         addEnricher(SensorPropagatingEnricher.newInstanceListeningTo(clouderaManagerNode,
                 ClouderaManagerNode.CLOUDERA_MANAGER_URL));
     }
@@ -172,7 +172,7 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
         log.info("Start CDH deployment on '" + location +"'");
         BrooklynLauncher launcher = BrooklynLauncher.newInstance()
                                                     .application(
-                                                            EntitySpecs.appSpec(SampleClouderaManagedClusterInterface.class)
+                                                            EntitySpec.create(SampleClouderaManagedClusterInterface.class)
                                                             .displayName("Brooklyn Cloudera Managed Cluster"))
                                                     .webconsolePort(port)
                                                     .location(location)

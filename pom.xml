@@ -109,11 +109,11 @@
             <artifactId>jclouds-sshj</artifactId>
             <version>${jclouds.version}</version>
         </dependency>
-            <dependency>
-                <groupId>io.cloudsoft.amp.locations</groupId>
-                <artifactId>ibm-smartcloud</artifactId>
-                <version>${brooklyn.version}</version>
-            </dependency>
+        <dependency>
+            <groupId>io.cloudsoft.amp.locations</groupId>
+            <artifactId>ibm-smartcloud</artifactId>
+            <version>${brooklyn.version}</version>
+        </dependency>
         <dependency>
             <!-- web testing -->
             <groupId>org.simpleframework</groupId>

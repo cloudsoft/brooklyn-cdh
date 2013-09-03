@@ -1,6 +1,8 @@
 package io.cloudsoft.cloudera;
 
 import static brooklyn.entity.proxying.EntitySpecs.spec;
+
+import brooklyn.entity.proxying.EntitySpec;
 import io.cloudsoft.cloudera.brooklynnodes.ClouderaManagerNode;
 import io.cloudsoft.cloudera.brooklynnodes.DirectClouderaManager;
 import io.cloudsoft.cloudera.rest.ClouderaRestCaller;
@@ -59,15 +61,14 @@ public abstract class AbstractCloudLiveTest {
    
    protected static final Logger log = LoggerFactory.getLogger(AbstractCloudLiveTest.class);
 
-   @BeforeClass
+   @BeforeClass(alwaysRun = true)
    public void beforeClass() throws Exception {
       machines = Lists.newArrayList();
        try {
            ctx = new LocalManagementContext();
            app = ApplicationBuilder.newManagedApp(TestApplication.class, ctx);
-           cdhApp = app.createAndManageChild(spec(SampleClouderaManagedClusterInterface.class));
-           Map<String, ?> flags = getFlags();
-           location = ctx.getLocationRegistry().resolve(getLocation(), flags);
+           cdhApp = app.createAndManageChild(EntitySpec.create(SampleClouderaManagedClusterInterface.class));
+           location = ctx.getLocationRegistry().resolve(getLocation(), getFlags());
            log.info("Started CDH deployment on '" + location +"'");
            app.start(Arrays.asList(location));
            EntityTestUtils.assertAttributeEqualsEventually(app, Startable.SERVICE_UP, true);
@@ -77,7 +78,7 @@ public abstract class AbstractCloudLiveTest {
        }
    }
 
-   @AfterClass
+   @AfterClass(alwaysRun = true)
    public void afterClass() throws Exception {
       //app.stop();
       Entities.destroyAll(ctx);
@@ -93,7 +94,7 @@ public abstract class AbstractCloudLiveTest {
       if(getClouderaManagerUrl().isPresent())
          server = new URL(getClouderaManagerUrl().get()).getHost();
       else {
-         Assert.fail();
+         Assert.fail("Could not get Cloudera Manager URL");
       }
       caller = ClouderaRestCaller.newInstance(server, CDH_USER, CDH_PASSWORD);
       String clusterName = Iterables.getFirst(caller.getClusters(), "");
