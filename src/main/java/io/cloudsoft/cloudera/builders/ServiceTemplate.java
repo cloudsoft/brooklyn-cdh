@@ -1,5 +1,6 @@
 package io.cloudsoft.cloudera.builders;
 
+import brooklyn.entity.proxying.EntitySpec;
 import io.cloudsoft.cloudera.brooklynnodes.ClouderaManagerNode;
 import io.cloudsoft.cloudera.brooklynnodes.ClouderaService;
 import io.cloudsoft.cloudera.rest.ClouderaRestCaller;
@@ -10,6 +11,7 @@ import io.cloudsoft.cloudera.rest.RestDataObjects.ServiceType;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -183,15 +185,12 @@ public abstract class ServiceTemplate<T extends ServiceTemplate<?>> extends Abst
         flags2.put("template", this);
         if (manager!=null) flags2.put("manager", manager);
         String name = (String) flags2.get("name");
-        if (name==null) {
-            if (name==null) useDefaultName();
-            name = this.name;
-            flags2.put("name", name);
-        }
-        ClouderaService result = ((EntityInternal)owner).getManagementSupport().getManagementContext().getEntityManager().
-                createEntity(BasicEntitySpec.newInstance(ClouderaService.class).
-                        configure(flags2));
-        ((EntityInternal)owner).addChild(result);
+        if (name==null) useDefaultName();
+        name = this.name;
+        flags2.put("name", name);
+        ClouderaService result = ((EntityInternal)owner).getManagementSupport().getManagementContext().getEntityManager()
+                .createEntity(EntitySpec.create(ClouderaService.class).configure(flags2));
+        owner.addChild(result);
         Entities.manage(result);
         result.create();
         try { 
