@@ -127,7 +127,7 @@ public class ClouderaServiceImpl extends AbstractEntity implements ClouderaServi
                         public Boolean call() throws Exception {
                             try {
                                 JSONObject serviceJson = getApi().getServiceJson(getClusterName(), getServiceName());
-                                return serviceJson.getString("serviceState") == "STARTED";
+                                return serviceJson.getString("serviceState").equals("STARTED");
                             }
                             catch (Exception e) {
                                 log.error("Can't connect to " + getServiceName(), e);
@@ -159,17 +159,15 @@ public class ClouderaServiceImpl extends AbstractEntity implements ClouderaServi
                     )
                 .build();
     }
-        
-    
-    
+
     String getClusterName() { return getAttribute(CLUSTER_NAME); }
     String getServiceName() { return getAttribute(SERVICE_NAME); }
-    
+
     @Override
     @Description("Start the process/service represented by an entity")
     public void start(@NamedParameter("locations") Collection<? extends Location> locations) {
         if (locations == null) log.debug("Ignoring locations at " + this);
-        if (getAttribute(SERVICE_STATE)==Lifecycle.RUNNING) {
+        if (Lifecycle.RUNNING.equals(getAttribute(SERVICE_STATE))) {
             log.debug("Ignoring start when already started at " + this);
             return;
         }
