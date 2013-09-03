@@ -22,7 +22,7 @@ import brooklyn.entity.trait.Startable;
 import brooklyn.entity.trait.StartableMethods;
 import brooklyn.location.Location;
 import brooklyn.management.Task;
-import brooklyn.util.MutableMap;
+import brooklyn.util.collections.MutableMap;
 
 public class StartupGroupImpl extends AbstractEntity implements StartupGroup {
 

@@ -10,6 +10,7 @@ import java.net.UnknownHostException;
 import java.util.List;
 import java.util.Set;
 
+import brooklyn.util.ssh.BashCommands;
 import joptsimple.internal.Strings;
 
 import org.slf4j.Logger;
@@ -25,7 +26,6 @@ import brooklyn.location.jclouds.JcloudsSshMachineLocation;
 import brooklyn.util.ResourceUtils;
 import brooklyn.util.collections.MutableMap;
 import brooklyn.util.exceptions.Exceptions;
-import brooklyn.util.ssh.CommonCommands;
 import brooklyn.util.time.Time;
 
 import com.google.common.base.Preconditions;
@@ -70,12 +70,12 @@ public class ClouderaCdhNodeSshDriver extends AbstractSoftwareProcessSshDriver i
             InputStream proxy = generatePackageManagerProxyFile(aptProxyUrl);
             getMachine().copyTo(proxy, "/tmp/02proxy");
             newScript(INSTALLING+":setAptProxy")
-                .body.append(CommonCommands.sudo("mv /tmp/02proxy /etc/apt/apt.conf.d/02proxy"))
+                .body.append(BashCommands.sudo("mv /tmp/02proxy /etc/apt/apt.conf.d/02proxy"))
                 .execute();
         }
         
         List<String> commands = Lists.newArrayList();
-        commands.add(CommonCommands.INSTALL_TAR);
+        commands.add(BashCommands.INSTALL_TAR);
         commands.add("cd /tmp");
         commands.add("sudo mkdir /etc/cloudera-scm-agent/");
         commands.add("sudo mv etc_cloudera-scm-agent_config.ini /etc/cloudera-scm-agent/config.ini");
@@ -225,7 +225,7 @@ public class ClouderaCdhNodeSshDriver extends AbstractSoftwareProcessSshDriver i
          }
       }
 
-      log.info("No hostname found for {} (got {}; {})", new Object[] { this, stdouts, stderrs });
+      log.info("No hostname found for {} (got {}; {})", this, stdouts, stderrs);
       return null;
    }
 
