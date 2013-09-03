@@ -176,7 +176,11 @@ public class ClouderaCdhNodeImpl extends SoftwareProcessImpl implements Cloudera
         if (privateHostname) {
             // manager might view it as ip-10-1-1-1.ec2.internal whereas node knows itself as just ip-10-1-1-1
             // TODO better might be to compare private IP addresses of this node with IP of managed nodes at CM  
-            def pm = managedHosts.find { it.startsWith(privateHostname) }
+            def pm = managedHosts.find { String it ->
+                int localdomainIndex = it.indexOf(".localdomain")
+                it.startsWith(privateHostname) ||
+                        (localdomainIndex != -1 && privateHostname.startsWith(it.substring(0, localdomainIndex)))
+            }
             
             if (pm) {
                 log.debug("ManagedHostId: "+ pm);
