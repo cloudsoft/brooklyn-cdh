@@ -229,6 +229,13 @@
     </build>
 
     <profiles>
+        <profile>
+            <id>Live</id>
+            <properties>
+                <includedTestGroups>Live</includedTestGroups>
+                <excludedTestGroups/>
+            </properties>
+        </profile>
          <profile>
             <id>Tests</id>
             <activation>
