@@ -23,7 +23,7 @@ import brooklyn.util.ResourceUtils;
 import brooklyn.util.collections.MutableMap;
 import brooklyn.util.internal.Repeater;
 import brooklyn.util.internal.ssh.SshTool;
-import brooklyn.util.ssh.CommonCommands;
+import brooklyn.util.ssh.BashCommands;
 import brooklyn.util.time.Time;
 
 import com.google.common.base.Preconditions;
@@ -72,7 +72,7 @@ public class DirectClouderaManagerSshDriver extends AbstractSoftwareProcessSshDr
             InputStream proxy = generatePackageManagerProxyFile(aptProxyUrl, APT_GET);
             getMachine().copyTo(proxy, "/tmp/02proxy");
             newScript(INSTALLING+":setAptProxy").setFlag(SshTool.PROP_ALLOCATE_PTY.getName(), true).
-            body.append(CommonCommands.sudo("mv /tmp/02proxy /etc/apt/apt.conf.d/02proxy")).execute();
+            body.append(BashCommands.sudo("mv /tmp/02proxy /etc/apt/apt.conf.d/02proxy")).execute();
         }
         String yumMirrorUrl = getLocation().getConfig(ClouderaManagerNode.YUM_MIRROR);
         if(!Strings.isNullOrEmpty(yumMirrorUrl)) {
@@ -80,8 +80,8 @@ public class DirectClouderaManagerSshDriver extends AbstractSoftwareProcessSshDr
             getMachine().copyTo(proxy, "/tmp/cloudera-manager.repo");
             newScript(INSTALLING+":setYumProxy").setFlag(SshTool.PROP_ALLOCATE_PTY.getName(), true).
             body.append(
-                    CommonCommands.sudo("mv /tmp/cloudera-manager.repo /etc/yum.repos.d/cloudera-manager.repo"),
-                    CommonCommands.sudo("yum update"))
+                    BashCommands.sudo("mv /tmp/cloudera-manager.repo /etc/yum.repos.d/cloudera-manager.repo"),
+                    BashCommands.sudo("yum update"))
                     .execute();
         }
         
@@ -91,8 +91,8 @@ public class DirectClouderaManagerSshDriver extends AbstractSoftwareProcessSshDr
             // assumes use of yum to install expect; just install expect ourselves, and wget
             // also note:  ubuntu 12.10 can cause the actual install to hang, it needs 12.04; see below
             body.append(
-                    CommonCommands.INSTALL_WGET,
-                    CommonCommands.installPackage("expect")).
+                    BashCommands.INSTALL_WGET,
+                    BashCommands.installPackage("expect")).
             execute();
         getMachine().copyTo(installCM, getInstallDir()+"/install_cm.sh");
 
@@ -139,8 +139,8 @@ public class DirectClouderaManagerSshDriver extends AbstractSoftwareProcessSshDr
             log.debug("Disable SELINUX");
             newScript(LAUNCHING+":disableSELINUX").setFlag(SshTool.PROP_ALLOCATE_PTY.getName(), true).
             body.append(
-                    CommonCommands.sudo("sed -i \"s/SELINUX=/SELINUX=disabled # it was /\" /etc/selinux/config"),
-                    CommonCommands.sudo("reboot"))
+                    BashCommands.sudo("sed -i \"s/SELINUX=/SELINUX=disabled # it was /\" /etc/selinux/config"),
+                    BashCommands.sudo("reboot"))
                     .execute();
             Time.sleep(10*1000L);
             waitForSshable(getLocation(), getLocation().getConfig(IbmSmartLocationConfig.SSH_REACHABLE_TIMEOUT_MILLIS));
@@ -152,7 +152,7 @@ public class DirectClouderaManagerSshDriver extends AbstractSoftwareProcessSshDr
         
         newScript(LAUNCHING).
             body.append(
-                    CommonCommands.sudo(
+                    BashCommands.sudo(
                     "bash -c '( . "+getInstallDir()+"/install_cm.sh && install_cm )'"
                     )).
             execute();

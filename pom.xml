@@ -85,11 +85,11 @@
             <artifactId>jclouds-sshj</artifactId>
             <version>${jclouds.version}</version>
         </dependency>
-            <dependency>
-                <groupId>io.cloudsoft.amp.locations</groupId>
-                <artifactId>ibm-smartcloud</artifactId>
-                <version>${brooklyn.version}</version>
-            </dependency>
+        <dependency>
+            <groupId>io.cloudsoft.amp.locations</groupId>
+            <artifactId>ibm-smartcloud</artifactId>
+            <version>${brooklyn.version}</version>
+        </dependency>
         <dependency>
             <!-- web testing -->
             <groupId>org.simpleframework</groupId>
@@ -97,16 +97,10 @@
             <version>4.1.9</version>
             <scope>test</scope>
         </dependency>
-                 <dependency>
+        <dependency>
             <groupId>org.testng</groupId>
             <artifactId>testng</artifactId>
             <version>${testng.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.brooklyn</groupId>
-            <artifactId>brooklyn-test-support</artifactId>
-            <version>${brooklyn.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -235,6 +229,13 @@
     </build>
 
     <profiles>
+        <profile>
+            <id>Live</id>
+            <properties>
+                <includedTestGroups>Live</includedTestGroups>
+                <excludedTestGroups/>
+            </properties>
+        </profile>
          <profile>
             <id>Tests</id>
             <activation>
