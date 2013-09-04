@@ -80,20 +80,18 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
     public void init() {
         admin = addChild(EntitySpec.create(StartupGroup.class).displayName("Cloudera Hosts and Admin"));
 
-        clouderaManagerNode = admin.addChild(getEntityManager().createEntity(
-                EntitySpec.create(DirectClouderaManager.class)));
+        clouderaManagerNode = admin.addChild(EntitySpec.create(DirectClouderaManager.class));
 
-        workerCluster = admin.addChild(getEntityManager().createEntity(
-                EntitySpec.create(DynamicCluster.class)
+        workerCluster = admin.addChild(EntitySpec.create(DynamicCluster.class)
                         .displayName("CDH Nodes")
                         .configure(
                                 "factory",
                                 ClouderaCdhNodeImpl.newFactory()
                                         .setConfig(ClouderaCdhNode.MANAGER, clouderaManagerNode))
-                        .configure("initialSize", getConfig(INITIAL_SIZE_NODES))));
+                        .configure("initialSize", getConfig(INITIAL_SIZE_NODES)));
 
-        services = addChild(getEntityManager().createEntity(
-                EntitySpec.create(AllServices.class).displayName("Cloudera Services")));
+        services = addChild(EntitySpec.create(AllServices.class).displayName("Cloudera Services"));
+
         addEnricher(SensorPropagatingEnricher.newInstanceListeningTo(clouderaManagerNode,
                 ClouderaManagerNode.CLOUDERA_MANAGER_URL));
     }

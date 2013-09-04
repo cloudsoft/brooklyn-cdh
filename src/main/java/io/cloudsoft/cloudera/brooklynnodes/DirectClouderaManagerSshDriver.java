@@ -195,7 +195,7 @@ public class DirectClouderaManagerSshDriver extends AbstractSoftwareProcessSshDr
       }
     }
     
-    LOG.info("No hostname found for {} (got {}; {})", this, stdouts, stderrs);
+    LOG.info("No hostname found for {} (got {}; {})", new Object[] {this, stdouts, stderrs});
     return null;
     }
 }

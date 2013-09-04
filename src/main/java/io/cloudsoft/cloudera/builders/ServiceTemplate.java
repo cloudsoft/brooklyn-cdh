@@ -1,6 +1,7 @@
 package io.cloudsoft.cloudera.builders;
 
 import brooklyn.entity.proxying.EntitySpec;
+import brooklyn.util.exceptions.Exceptions;
 import io.cloudsoft.cloudera.brooklynnodes.ClouderaManagerNode;
 import io.cloudsoft.cloudera.brooklynnodes.ClouderaService;
 import io.cloudsoft.cloudera.rest.ClouderaRestCaller;
@@ -28,8 +29,6 @@ import brooklyn.util.collections.MutableMap;
 import brooklyn.util.text.Identifiers;
 
 import com.google.common.base.Preconditions;
-import com.google.common.base.Throwables;
-
 
 public abstract class ServiceTemplate<T extends ServiceTemplate<?>> extends AbstractTemplate<T> {
     
@@ -184,9 +183,11 @@ public abstract class ServiceTemplate<T extends ServiceTemplate<?>> extends Abst
         flags2.put("template", this);
         if (manager!=null) flags2.put("manager", manager);
         String name = (String) flags2.get("name");
-        if (name==null) useDefaultName();
-        name = this.name;
-        flags2.put("name", name);
+        if (name == null) {
+            useDefaultName();
+            name = this.name;
+            flags2.put("name", name);
+        }
         ClouderaService result = ((EntityInternal)owner).getManagementSupport().getManagementContext().getEntityManager()
                 .createEntity(EntitySpec.create(ClouderaService.class).configure(flags2));
         owner.addChild(result);
@@ -197,7 +198,7 @@ public abstract class ServiceTemplate<T extends ServiceTemplate<?>> extends Abst
             // (not needed, i don't think...)
             Thread.sleep(3000);
         } catch (InterruptedException e) {
-            throw Throwables.propagate(e);
+            throw Exceptions.propagate(e);
         }
         return result;
     }
