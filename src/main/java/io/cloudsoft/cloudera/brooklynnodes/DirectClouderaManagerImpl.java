@@ -170,7 +170,8 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
     }
     public static ClouderaCdhNode findEntityForHostIdIn(String hostId, Entity root) {
         if (LOG.isTraceEnabled())
-            LOG.trace("hostId={}, CDH_NODE_ID={}, entity={}", hostId, root.getAttribute(ClouderaCdhNode.CDH_HOST_ID), root);
+            LOG.trace("hostId={}, CDH_NODE_ID={}, entity={}",
+                    new Object[] {hostId, root.getAttribute(ClouderaCdhNode.CDH_HOST_ID), root});
         if ((root instanceof ClouderaCdhNode) && hostId.equals(root.getAttribute(ClouderaCdhNode.CDH_HOST_ID)))
             return (ClouderaCdhNode)root;
         for (Entity child: root.getChildren()) {
