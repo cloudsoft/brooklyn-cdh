@@ -1,5 +1,7 @@
 package io.cloudsoft.cloudera.builders;
 
+import brooklyn.entity.proxying.EntitySpec;
+import brooklyn.util.exceptions.Exceptions;
 import io.cloudsoft.cloudera.brooklynnodes.ClouderaManagerNode;
 import io.cloudsoft.cloudera.brooklynnodes.ClouderaService;
 import io.cloudsoft.cloudera.rest.ClouderaRestCaller;
@@ -10,6 +12,7 @@ import io.cloudsoft.cloudera.rest.RestDataObjects.ServiceType;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -22,13 +25,10 @@ import org.slf4j.LoggerFactory;
 import brooklyn.entity.Entity;
 import brooklyn.entity.basic.Entities;
 import brooklyn.entity.basic.EntityInternal;
-import brooklyn.entity.proxying.BasicEntitySpec;
 import brooklyn.util.collections.MutableMap;
 import brooklyn.util.text.Identifiers;
 
 import com.google.common.base.Preconditions;
-import com.google.common.base.Throwables;
-
 
 public abstract class ServiceTemplate<T extends ServiceTemplate<?>> extends AbstractTemplate<T> {
     
@@ -61,8 +61,7 @@ public abstract class ServiceTemplate<T extends ServiceTemplate<?>> extends Abst
 
     @SuppressWarnings("unchecked")
     public T hosts(String ...hostIds) {
-        for (String hostId: hostIds) 
-            this.hostIds.add(hostId);
+        Collections.addAll(this.hostIds, hostIds);
         return (T)this;
     }
     @SuppressWarnings("unchecked")
@@ -157,7 +156,7 @@ public abstract class ServiceTemplate<T extends ServiceTemplate<?>> extends Abst
         preServiceAddChecks(caller);
        
         caller.addService(clusterName, name, getServiceType());
-        caller.addServiceRoleHosts(clusterName, name, roles.toArray(new ServiceRoleHostInfo[0]));
+        caller.addServiceRoleHosts(clusterName, name, roles.toArray(new ServiceRoleHostInfo[roles.size()]));
         
         Object config = caller.getServiceConfig(clusterName, name);
         Map<?,?> cfgOut = convertConfig(config);
@@ -184,22 +183,23 @@ public abstract class ServiceTemplate<T extends ServiceTemplate<?>> extends Abst
         flags2.put("template", this);
         if (manager!=null) flags2.put("manager", manager);
         String name = (String) flags2.get("name");
-        if (name==null) {
-            if (name==null) useDefaultName();
+        if (name == null) {
+            useDefaultName();
             name = this.name;
             flags2.put("name", name);
         }
-        ClouderaService result = ((EntityInternal)owner).getManagementSupport().getManagementContext().getEntityManager().
-                createEntity(BasicEntitySpec.newInstance(ClouderaService.class).
-                        configure(flags2));
-        ((EntityInternal)owner).addChild(result);
+        ClouderaService result = ((EntityInternal)owner).getManagementSupport().getManagementContext().getEntityManager()
+                .createEntity(EntitySpec.create(ClouderaService.class).configure(flags2));
+        owner.addChild(result);
         Entities.manage(result);
         result.create();
         try { 
             // pause a bit after creation, to ensure it really is created
             // (not needed, i don't think...)
             Thread.sleep(3000);
-        } catch (InterruptedException e) { Throwables.propagate(e); }
+        } catch (InterruptedException e) {
+            throw Exceptions.propagate(e);
+        }
         return result;
     }
     

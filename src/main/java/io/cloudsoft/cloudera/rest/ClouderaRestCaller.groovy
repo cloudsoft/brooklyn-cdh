@@ -29,10 +29,10 @@ public class ClouderaRestCaller {
     }
     
     String server;
-    
+
     int port = 7180;
     String protocol = "http";
-    
+
     String authName, authPass;
 
     RestCaller _caller;
