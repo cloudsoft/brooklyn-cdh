@@ -1,28 +1,35 @@
-package io.cloudsoft.cloudera.brooklynnodes
+package io.cloudsoft.cloudera.brooklynnodes;
 
-import java.util.concurrent.Callable
-import java.util.concurrent.TimeUnit
+import java.io.File;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
 
-import org.jclouds.compute.domain.OsFamily
-import org.jclouds.googlecomputeengine.GoogleComputeEngineApiMetadata
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
+import org.jclouds.compute.domain.OsFamily;
+import org.jclouds.googlecomputeengine.GoogleComputeEngineApiMetadata;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import brooklyn.entity.Entity
-import brooklyn.entity.basic.Description
-import brooklyn.entity.basic.Lifecycle
-import brooklyn.entity.basic.NamedParameter
-import brooklyn.entity.basic.SoftwareProcessImpl
-import brooklyn.entity.basic.lifecycle.ScriptHelper
-import brooklyn.event.feed.function.FunctionFeed
-import brooklyn.event.feed.function.FunctionPollConfig
-import brooklyn.location.MachineProvisioningLocation
-import brooklyn.location.jclouds.JcloudsLocation
-import brooklyn.location.jclouds.JcloudsLocationConfig
-import brooklyn.location.jclouds.templates.PortableTemplateBuilder
-import brooklyn.util.time.Time
+import brooklyn.entity.annotation.Effector;
+import brooklyn.entity.annotation.EffectorParam;
+import brooklyn.entity.basic.Lifecycle;
+import brooklyn.entity.basic.SoftwareProcessImpl;
+import brooklyn.entity.basic.lifecycle.ScriptHelper;
+import brooklyn.event.feed.function.FunctionFeed;
+import brooklyn.event.feed.function.FunctionPollConfig;
+import brooklyn.location.MachineProvisioningLocation;
+import brooklyn.location.jclouds.JcloudsLocation;
+import brooklyn.location.jclouds.JcloudsLocationConfig;
+import brooklyn.location.jclouds.templates.PortableTemplateBuilder;
+import brooklyn.util.collections.MutableMap;
+import brooklyn.util.collections.MutableSet;
+import brooklyn.util.text.Strings;
+import brooklyn.util.time.Time;
 
-import com.google.common.base.Functions
+import com.google.common.base.Functions;
 
 public class ClouderaCdhNodeImpl extends SoftwareProcessImpl implements ClouderaCdhNode {
 
@@ -37,18 +44,18 @@ public class ClouderaCdhNodeImpl extends SoftwareProcessImpl implements Cloudera
         while (!isRunningResult && System.currentTimeMillis() < waitTime) {
             Time.sleep(1000); // FIXME magic number; should be config key with default value?
             try {
-                isRunningResult = driver.isRunning();
+                isRunningResult = getDriver().isRunning();
             } catch (Exception  e) {
                 setAttribute(SERVICE_STATE, Lifecycle.ON_FIRE);
                 // provide extra context info, as we're seeing this happen in strange circumstances
-                if (driver==null) throw new IllegalStateException(this+" concurrent start and shutdown detected");
+                if (getDriver()==null) throw new IllegalStateException(this+" concurrent start and shutdown detected");
                 throw new IllegalStateException("Error detecting whether "+this+" is running: "+e, e);
             }
             if (log.isDebugEnabled()) log.debug("checked {}, is running returned: {}", this, isRunningResult);
         }
         if (!isRunningResult) {
             String msg = "Software process entity "+this+" did not appear to start within "+
-                    Time.makeTimeString(System.currentTimeMillis()-startTime)+
+                    Time.makeTimeStringRounded(System.currentTimeMillis()-startTime)+
                     "; setting state to indicate problem and throwing; consult logs for more details";
             log.warn(msg);
             setAttribute(SERVICE_STATE, Lifecycle.ON_FIRE);
@@ -104,7 +111,7 @@ public class ClouderaCdhNodeImpl extends SoftwareProcessImpl implements Cloudera
 
     // 7180, 7182, 8088, 8888, 50030, 50060, 50070, 50090, 60010, 60020, 60030
     protected Collection<Integer> getRequiredOpenPorts() {
-        Set result = [22, 2181, 7180, 7182, 8088, 8888, 50030, 50060, 50070, 50090, 60010, 60020, 60030];
+        Set result = MutableSet.of(22, 2181, 7180, 7182, 8088, 8888, 50030, 50060, 50070, 50090, 60010, 60020, 60030);
         result.addAll(super.getRequiredOpenPorts());
         return result;
     }
@@ -121,12 +128,12 @@ public class ClouderaCdhNodeImpl extends SoftwareProcessImpl implements Cloudera
                             try {
                                 return getManagedHostId() != null;
                             } catch (Exception e) {
-                                log.error(e);
+                                log.error("ID is not available for "+ClouderaCdhNodeImpl.this+": "+e, e);
                                 return false;
                             }
                         }
                     })
-                    .onError(Functions.constant(false)))
+                    .onFailureOrException(Functions.constant(false)))
                 .poll(new FunctionPollConfig<String, String>(CDH_HOST_ID)
                     .period(30, TimeUnit.SECONDS)
                     .callable(new Callable<String>() {
@@ -135,7 +142,7 @@ public class ClouderaCdhNodeImpl extends SoftwareProcessImpl implements Cloudera
                             return getManagedHostId();
                         }
                     })
-                    .onError(Functions.constant(null)))
+                    .onFailureOrException(Functions.constant((String)null)))
                 .build();
     }
     
@@ -146,60 +153,62 @@ public class ClouderaCdhNodeImpl extends SoftwareProcessImpl implements Cloudera
     }
     
     public String getManagedHostId() {
-        def managedHosts = getConfig(MANAGER)?.getAttribute(ClouderaManagerNode.MANAGED_HOSTS);
-        if (!managedHosts) return null;
+        ClouderaManagerNode mgr = getConfig(MANAGER);
+        List managedHosts = mgr == null ? null : mgr.getAttribute(ClouderaManagerNode.MANAGED_HOSTS);
+        if (managedHosts==null || managedHosts.isEmpty()) return null;
         String hostname = getAttribute(HOSTNAME);
-        if (hostname && managedHosts.contains(hostname)) {
+        if (Strings.isNonEmpty(hostname) && managedHosts.contains(hostname)) {
             log.debug("ManagedHostId is hostname: "+ hostname);
             return hostname;
         }
         String privateHostname = getAttribute(PRIVATE_HOSTNAME);
-        if (privateHostname) {
+        if (Strings.isNonEmpty(privateHostname)) {
             // manager might view it as ip-10-1-1-1.ec2.internal whereas node knows itself as just ip-10-1-1-1
-            // TODO better might be to compare private IP addresses of this node with IP of managed nodes at CM  
-            def pm = managedHosts.find { String it ->
-                int localdomainIndex = it.indexOf(".localdomain")
-                it.startsWith(privateHostname) ||
-                        (localdomainIndex != -1 && privateHostname.startsWith(it.substring(0, localdomainIndex)))
+            // TODO better might be to compare private IP addresses of this node with IP of managed nodes at CM
+            String pm = null;
+            for (Object it: managedHosts) {
+                String h = String.valueOf(it);
+                int localdomainIndex = h.indexOf(".localdomain");
+                if (h.startsWith(privateHostname) ||
+                        (localdomainIndex != -1 && privateHostname.startsWith(h.substring(0, localdomainIndex)))) {
+                    log.debug("ManagedHostId: "+ h);
+                    return h;
+                }
             }
-            
-            if (pm) {
-                log.debug("ManagedHostId: "+ pm);
-                return pm;
-            } else {
-                log.debug("ManagedHostId: "+ privateHostname);
-                return privateHostname;
-            }
+            log.debug("ManagedHostId: "+ privateHostname);
+            return privateHostname;
         }
         return null;
     }
 
     public ScriptHelper newScript(String summary) {
-        return new ScriptHelper(driver, summary);
+        return new ScriptHelper((ClouderaCdhNodeDriver)getDriver(), summary);
     }
 
     /**
      * Start the entity in the given collection of locations.
      */
-    @Description("Collect metrics files from this host and save to a file on this machine, as a subdir of the given dir, returning the name of that subdir")
-    public String collectMetrics(@NamedParameter("targetDir") String targetDir) {
+    @Effector(description="Collect metrics files from this host and save to a file on this machine, as a subdir of the given dir, returning the name of that subdir")
+    public String collectMetrics(@EffectorParam(name="targetDir") String targetDir) {
         targetDir = targetDir + "/" + getAttribute(CDH_HOST_ID);
         new File(targetDir).mkdir();
         // TODO allow wildcards, or batch on server then copy down?
         int i=0;
-        for (role in ["datanode","namenode","master","regionserver"]) {
+        for (String role : new String[] { "datanode","namenode","master","regionserver" }) {
             try {
-                ((ClouderaCdhNodeDriver)driver).machine.copyFrom(sshTries:1,
-                    "/tmp/${role}-metrics.out", targetDir+"/${role}-metrics.out");
+                ((ClouderaCdhNodeDriver)getDriver()).getMachine().copyFrom(
+                        MutableMap.of("sshTries", 1),
+                        "/tmp/${role}-metrics.out", targetDir+"/${role}-metrics.out");
             } catch (Exception e) {
                 //not serious, file probably doesn't exist
                 log.debug("Unable to copy /tmp/${role}-metrics.out from ${this} (file may not exist): "+e);
             }
         }
-        for (role in ["mr","jvm"]) {
+        for (String role : new String[] { "mr","jvm" }) {
             try {
-                ((ClouderaCdhNodeDriver)driver).machine.copyFrom(sshTries:1,
-                    "/tmp/${role}metrics.log", targetDir+"/${role}metrics.log");
+                ((ClouderaCdhNodeDriver)getDriver()).getMachine().copyFrom(
+                        MutableMap.of("sshTries", 1),
+                        "/tmp/${role}metrics.log", targetDir+"/${role}metrics.log");
             } catch (Exception e) {
                 //not serious, file probably doesn't exist
                 log.debug("Unable to copy /tmp/${role}metrics.log from ${this} (file may not exist): "+e);
