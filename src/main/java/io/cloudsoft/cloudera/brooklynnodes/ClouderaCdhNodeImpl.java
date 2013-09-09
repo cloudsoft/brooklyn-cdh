@@ -1,5 +1,7 @@
 package io.cloudsoft.cloudera.brooklynnodes;
 
+import static io.cloudsoft.cloudera.brooklynnodes.ClouderaManagerNode.log;
+
 import java.io.File;
 import java.util.Collection;
 import java.util.List;
@@ -26,10 +28,12 @@ import brooklyn.location.jclouds.JcloudsLocationConfig;
 import brooklyn.location.jclouds.templates.PortableTemplateBuilder;
 import brooklyn.util.collections.MutableMap;
 import brooklyn.util.collections.MutableSet;
+import brooklyn.util.net.Cidr;
 import brooklyn.util.text.Strings;
 import brooklyn.util.time.Time;
 
 import com.google.common.base.Functions;
+import com.google.common.collect.Iterables;
 
 public class ClouderaCdhNodeImpl extends SoftwareProcessImpl implements ClouderaCdhNode {
 
@@ -114,6 +118,17 @@ public class ClouderaCdhNodeImpl extends SoftwareProcessImpl implements Cloudera
         Set result = MutableSet.of(22, 2181, 7180, 7182, 8088, 8888, 50030, 50060, 50070, 50090, 60010, 60020, 60030);
         result.addAll(super.getRequiredOpenPorts());
         return result;
+    }
+    
+    @Override
+    protected void preStart() {
+        super.preStart();
+        
+        try {
+            TempCloudUtils.authorizePing(new Cidr(), Iterables.getFirst(getLocations(), null));
+        } catch (Throwable t) {
+            log.warn("can't setup firewall/ping: "+t, t);
+        }
     }
     
     public void connectSensors() {

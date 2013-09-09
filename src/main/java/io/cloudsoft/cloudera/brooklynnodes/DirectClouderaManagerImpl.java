@@ -131,7 +131,7 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
             cmHost = getAttribute(HOSTNAME);
         }
         try {
-            authorizePing(new Cidr(), Iterables.getFirst(getLocations(), null));
+            TempCloudUtils.authorizePing(new Cidr(), Iterables.getFirst(getLocations(), null));
         } catch (Throwable t) {
             log.warn("can't setup firewall/ping: "+t, t);
         }
@@ -261,42 +261,5 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
         }
     }
         
-    private void authorizePing(Cidr cidr, Location ssh) {
-        JcloudsLocation jcl = null;
-        JcloudsSshMachineLocation jclssh = null;
-        if (ssh instanceof JcloudsSshMachineLocation) {
-            jclssh = ((JcloudsSshMachineLocation)ssh);
-            jcl = jclssh.getParent();
-        }
-        if (jcl!=null) {
-            ComputeServiceContext ctx = jcl.getComputeService().getContext();
-            if (ctx.unwrap().getProviderMetadata().getId().equals("aws-ec2")) {
-               String region = jcl.getRegion();
-                try {
-                    RestContext<EC2Client, EC2AsyncClient> ec2Client = ctx.unwrap();
-                    String id = jclssh.getNode().getId();
-                    // string region prefix from id
-                    if (id.indexOf('/')>=0) id = id.substring(id.indexOf('/')+1);
-                    Set<? extends Reservation<? extends RunningInstance>> instances = ec2Client.getApi().getInstanceServices().describeInstancesInRegion(region, id);
-                    Set<String> groupNames = Iterables.getOnlyElement(instances).getGroupNames(); 
-                    String groupName = Iterables.getFirst(groupNames, null);
-                    // "jclouds#" + clusterSpec.getClusterName(); // + "#" + region;
-                    log.info("Authorizing ping for "+groupName+": "+cidr);
-                    ec2Client.getApi().getSecurityGroupServices().authorizeSecurityGroupIngressInRegion(region, 
-                          groupName, IpProtocol.ICMP, -1, -1, cidr.toString());
-                    return;
-                } catch(Exception e) {
-                    log.warn("Problem authorizing ping (possibly already authorized) for "+this+": "+e.getMessage());
-                    log.debug("Details for roblem authorizing ping (possibly already authorized) for "+this+": "+e.getMessage(), e);
-                    /* ignore, usually means that this permission was already granted */
-                    Exceptions.propagateIfFatal(e);
-                }
-            }
-        }
-        LOG.debug("Skipping ping authorization for "+this+"; not required or not supported");
-        // TODO for JcloudsSsh and Jclouds -- in AWS
-        // see WhirrClusterManager for example
-    }
-
 
 }
