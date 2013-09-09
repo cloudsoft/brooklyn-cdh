@@ -84,10 +84,9 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
 
         workerCluster = admin.addChild(EntitySpec.create(DynamicCluster.class)
                         .displayName("CDH Nodes")
-                        .configure(
-                                "factory",
-                                ClouderaCdhNodeImpl.newFactory()
-                                        .setConfig(ClouderaCdhNode.MANAGER, clouderaManagerNode))
+                        .configure(DynamicCluster.MEMBER_SPEC,
+                                EntitySpec.create(ClouderaCdhNode.class, ClouderaCdhNodeImpl.class)
+                                    .configure(ClouderaCdhNode.MANAGER, clouderaManagerNode))
                         .configure("initialSize", getConfig(INITIAL_SIZE_NODES)));
 
         services = addChild(EntitySpec.create(AllServices.class).displayName("Cloudera Services"));
@@ -169,7 +168,9 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
         BrooklynLauncher launcher = BrooklynLauncher.newInstance()
                                                     .application(
                                                             EntitySpec.create(SampleClouderaManagedClusterInterface.class)
-                                                            .displayName("Brooklyn Cloudera Managed Cluster"))
+                                                                .displayName("Brooklyn Cloudera Managed Cluster")
+//                                                                .configure(DEPLOY_HBASE, true)
+                                                                )
                                                     .webconsolePort(port)
                                                     .location(location)
                                                     .start();

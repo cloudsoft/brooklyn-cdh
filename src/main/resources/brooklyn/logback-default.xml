@@ -1,10 +1,10 @@
 <included>
 
-  <!-- logger configuration file picked up in IDE's and during testing -->
-
-  <include resource="io/cloudsoft/parc/logback-parc.xml"/>
-  
-  <!-- for debug, these are recommended in addition to logback-cloudera.xml --> 
-  <include resource="io/cloudsoft/parc/logback-parc-debug.xml"/>
+    <include resource="brooklyn/logback-stdout.xml"/>
+    <include resource="brooklyn/logback-file.xml"/>
+    
+    <include resource="brooklyn/logback-excludes.xml"/>
+    
+    <include resource="brooklyn/logback-debug.xml"/>
 
 </included>

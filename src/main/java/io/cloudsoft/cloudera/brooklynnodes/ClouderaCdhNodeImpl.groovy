@@ -1,8 +1,14 @@
 package io.cloudsoft.cloudera.brooklynnodes
 
+import java.util.concurrent.Callable
+import java.util.concurrent.TimeUnit
+
+import org.jclouds.compute.domain.OsFamily
+import org.jclouds.googlecomputeengine.GoogleComputeEngineApiMetadata
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
+
 import brooklyn.entity.Entity
-import brooklyn.entity.basic.BasicConfigurableEntityFactory
-import brooklyn.entity.basic.ConfigurableEntityFactory
 import brooklyn.entity.basic.Description
 import brooklyn.entity.basic.Lifecycle
 import brooklyn.entity.basic.NamedParameter
@@ -15,33 +21,12 @@ import brooklyn.location.jclouds.JcloudsLocation
 import brooklyn.location.jclouds.JcloudsLocationConfig
 import brooklyn.location.jclouds.templates.PortableTemplateBuilder
 import brooklyn.util.time.Time
-import com.google.common.base.Functions
-import org.jclouds.compute.domain.OsFamily
-import org.jclouds.googlecomputeengine.GoogleComputeEngineApiMetadata
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
 
-import java.util.concurrent.Callable
-import java.util.concurrent.TimeUnit
+import com.google.common.base.Functions
 
 public class ClouderaCdhNodeImpl extends SoftwareProcessImpl implements ClouderaCdhNode {
 
     FunctionFeed feed;
-
-    ClouderaCdhNodeImpl() {
-    }
-
-    ClouderaCdhNodeImpl(Entity parent) {
-        super(parent)
-    }
-
-    ClouderaCdhNodeImpl(Map properties) {
-        super(properties)
-    }
-
-    ClouderaCdhNodeImpl(Map properties, Entity parent) {
-        super(properties, parent)
-    }
 
     @Override
     public void waitForEntityStart() {
@@ -72,10 +57,6 @@ public class ClouderaCdhNodeImpl extends SoftwareProcessImpl implements Cloudera
     }
 
     private static final Logger log = LoggerFactory.getLogger(ClouderaCdhNodeImpl.class);
-    
-    public static ConfigurableEntityFactory<ClouderaCdhNodeImpl> newFactory() { 
-        return new BasicConfigurableEntityFactory<ClouderaCdhNodeImpl>(ClouderaCdhNodeImpl.class);
-    }
     
     public Class getDriverInterface() { return ClouderaCdhNodeSshDriver.class; }
     
