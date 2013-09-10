@@ -7,13 +7,13 @@ import java.io.InputStreamReader;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.List;
-import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import brooklyn.entity.Entity;
 import brooklyn.entity.basic.AbstractSoftwareProcessSshDriver;
+import brooklyn.entity.basic.Attributes;
 import brooklyn.entity.basic.EntityLocal;
 import brooklyn.entity.basic.SoftwareProcess;
 import brooklyn.entity.basic.lifecycle.ScriptHelper;
@@ -133,8 +133,7 @@ public class ClouderaCdhNodeSshDriver extends AbstractSoftwareProcessSshDriver i
         // [furthermore private IP is not always available so do a `hostname -I` to get it, where supported]
         // TODO could prefer public hostname if public hostname is resolvable internally and externally
         DynamicTasks.queue(SshEffectorTasks.ssh(
-                "echo "+entity.getAttribute(ClouderaCdhNode.PRIVATE_IP)+" "+entity.getAttribute(ClouderaCdhNode.PRIVATE_HOSTNAME)+" >> /etc/hosts",
-                BashCommands.ok("echo `hostname -I` "+entity.getAttribute(ClouderaCdhNode.PRIVATE_HOSTNAME)+" >> /etc/hosts")
+                "echo "+entity.getAttribute(ClouderaCdhNode.PRIVATE_IP)+" "+entity.getAttribute(ClouderaCdhNode.PRIVATE_HOSTNAME)+" >> /etc/hosts"
             )
             .runAsRoot()).block();
         
@@ -157,34 +156,31 @@ public class ClouderaCdhNodeSshDriver extends AbstractSoftwareProcessSshDriver i
 
     private void discoverSubnetAddressInfo() {
         // this entity seems to be picked up automatically at manager when agent starts on CDH node, no need to REST add call
-        String ipAddress = null;
-        if (getMachine() instanceof JcloudsSshMachineLocation) {
-            Set<String> addrs = ((JcloudsSshMachineLocation)getMachine()).getNode().getPrivateAddresses();
-            if (!addrs.isEmpty()) {
-                ipAddress = addrs.iterator().next();
-                log.info("IP address (private) of "+getMachine()+" for "+entity+" detected as "+ipAddress);
-            } else {
-                addrs = ((JcloudsSshMachineLocation)getMachine()).getNode().getPublicAddresses();
-                if (!addrs.isEmpty()) {
-                    log.info("IP address (public) of "+getMachine()+" for "+entity+" detected as "+ipAddress);
-                    ipAddress = addrs.iterator().next();
-                }
-            }
-        }
-        if (ipAddress==null) {
+        String ipPublic = getMachine().getAddress().getHostAddress();
+        String ipPrivate1 = entity.getAttribute(Attributes.SUBNET_HOSTNAME);
+        String ipPrivate2 = DynamicTasks.queue(SshEffectorTasks.ssh("hostname -I")).block().getStdout().trim();
+        String ipPrivate3 = null;
+        {
             InetAddress ipAddressIA;
             try {
                 ipAddressIA = InetAddress.getByName(getHostname());
-                if (ipAddressIA!=null) ipAddress = ipAddressIA.getHostAddress();
-                log.info("IP address (hostname) of "+getMachine()+" for "+entity+" detected as "+ipAddress);
+                if (ipAddressIA!=null) ipPrivate3 = ipAddressIA.getHostAddress();
             } catch (UnknownHostException e) {
-                throw new IllegalStateException("Cannor resolve IP address for "+getMachine()+"/"+getHostname()+": "+e, e);
+                log.warn("Cannot resolve IP address for "+getMachine()+"/"+getHostname()+" ("+this+"): "+e);
             }
         }
-        entity.setAttribute(ClouderaCdhNode.PRIVATE_IP, ipAddress);
+        log.info("IP addresses (incl private) of "+getMachine()+" for "+entity+" are "+
+                ipPublic+" / "+ipPrivate1+" / "+ipPrivate2+" / "+ipPrivate3);
+        String ipPrivate = null;
+        if (Strings.isNonEmpty(ipPrivate2)) ipPrivate = ipPrivate2;
+        else if (Strings.isNonEmpty(ipPrivate3)) ipPrivate = ipPrivate3;
+        else if (Strings.isNonEmpty(ipPrivate1)) ipPrivate = ipPrivate1;
+        else if (Strings.isNonEmpty(ipPublic)) ipPrivate = ipPublic;
+        else log.warn("Unable to resolve private IP for "+getMachine()+" ("+this+")");
+        entity.setAttribute(ClouderaCdhNode.PRIVATE_IP, ipPrivate);
 
-        // TODO should record all available hostnames and IP's and have a smart strategy for determining which to use
-        // (or configure the machines sensibly)
+        // TODO should record all available hostnames and IP's and have a smart strategy 
+        // (using CIDR's?) for determining which to use -- and possibly configure the machines sensibly
         
         // but we do need to record the _on-box_ hostname as this is what it is knwon at at the manager        
         String hostname = getHostname(), hostnameJclouds=null, hostnameOnbox=null;
@@ -192,8 +188,8 @@ public class ClouderaCdhNodeSshDriver extends AbstractSoftwareProcessSshDriver i
             // returns on-box hostname
             hostnameJclouds = ((JcloudsSshMachineLocation)getMachine()).getNode().getHostname();
         }
-        String onboxName = DynamicTasks.queue(SshEffectorTasks.ssh("hostname -f")).block().getStdout().trim();
-        log.info("hostname of "+getMachine()+" for "+entity+" (ipaddress " + ipAddress + ") is "+
+        hostnameOnbox = DynamicTasks.queue(SshEffectorTasks.ssh("hostname -f")).block().getStdout().trim();
+        log.info("Hostnames (incl private) of "+getMachine()+" for "+entity+" (ip " + ipPrivate + ") is "+
                 hostname + " / " + hostnameJclouds + " / " + hostnameOnbox);
         if (Strings.isNonEmpty(hostnameOnbox))
             entity.setAttribute(ClouderaCdhNode.PRIVATE_HOSTNAME, hostnameOnbox);

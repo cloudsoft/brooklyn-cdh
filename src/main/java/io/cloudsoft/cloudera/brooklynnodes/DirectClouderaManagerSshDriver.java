@@ -138,8 +138,9 @@ public class DirectClouderaManagerSshDriver extends AbstractSoftwareProcessSshDr
         // except here prefer the public hostname,
         // as this is what gets advertised to the consumer as the service URL)
         DynamicTasks.queue(SshEffectorTasks.ssh(
-                "echo "+entity.getAttribute(Attributes.HOSTNAME)+" "+entity.getAttribute(Attributes.HOSTNAME)+" >> /etc/hosts",
-                BashCommands.ok("echo `hostname -I` "+entity.getAttribute(Attributes.HOSTNAME)+" >> /etc/hosts")
+                BashCommands.alternatives(
+                        "echo `hostname -I` "+entity.getAttribute(Attributes.HOSTNAME)+" >> /etc/hosts",
+                        "echo "+entity.getAttribute(Attributes.HOSTNAME)+" "+entity.getAttribute(Attributes.HOSTNAME)+" >> /etc/hosts")
             )
             .runAsRoot()).block();
     }
