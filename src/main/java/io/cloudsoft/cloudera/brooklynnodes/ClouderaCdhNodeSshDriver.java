@@ -129,10 +129,14 @@ public class ClouderaCdhNodeSshDriver extends AbstractSoftwareProcessSshDriver i
         // and ensure the cloudera scm agent gets a sensible hostname (which it reports as host_id to the manager)
         // it uses python socket.getfqdn() which will sometimes take the wrong name when relying on reverse-DNS 
         // (in particular, with ravello when ravello provides 'vm1234.localdomain' and 'ubuntu.localdomain'
-        // this call sometimes picks up the latter, even though `hostname -f` somehow seems always to find the former) 
+        // this call sometimes picks up the latter, even though `hostname -f` somehow seems always to find the former)
+        // [furthermore private IP is not always available so do a `hostname -I` to get it, where supported]
         DynamicTasks.queue(SshEffectorTasks.ssh(
                 "echo "+entity.getAttribute(ClouderaCdhNode.PRIVATE_IP)+" "+entity.getAttribute(ClouderaCdhNode.PRIVATE_HOSTNAME)+" >> /etc/hosts",
-                "echo "+entity.getAttribute(ClouderaCdhNode.PRIVATE_IP)+" `hostname -f` >> /etc/hosts")
+                "echo "+entity.getAttribute(ClouderaCdhNode.PRIVATE_IP)+" `hostname -f` >> /etc/hosts",
+                BashCommands.ok("echo `hostname -I` "+entity.getAttribute(ClouderaCdhNode.PRIVATE_HOSTNAME)+" >> /etc/hosts"),
+                BashCommands.ok("echo `hostname -I` `hostname -f` >> /etc/hosts")
+            )
             .runAsRoot()).block();
         
         ScriptHelper script = newScript(CUSTOMIZING).
