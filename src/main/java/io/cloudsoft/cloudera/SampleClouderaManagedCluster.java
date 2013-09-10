@@ -33,6 +33,8 @@ import brooklyn.entity.proxying.EntitySpec;
 import brooklyn.launcher.BrooklynLauncher;
 import brooklyn.location.Location;
 import brooklyn.util.CommandLineUtil;
+import brooklyn.util.time.Duration;
+import brooklyn.util.time.Time;
 
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.Lists;
@@ -80,6 +82,8 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
 
     @Override
     public void init() {
+        log.debug("Starting "+this+" with "+getConfigMap().getAllConfig());
+        
         admin = addChild(EntitySpec.create(StartupGroup.class).displayName("Cloudera Hosts and Admin"));
 
         clouderaManagerNode = admin.addChild(EntitySpec.create(DirectClouderaManager.class));
@@ -148,6 +152,7 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
         }
                 
         // seems to want a restart of ZK then HB after configuring HB
+        Time.sleep(Duration.FIVE_SECONDS);
         log.info("Restarting Zookeeper after configuration change");
         zk.restart();
         if (hb != null) {
@@ -173,7 +178,7 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
                                                     .application(
                                                             EntitySpec.create(SampleClouderaManagedClusterInterface.class)
                                                                 .displayName("Brooklyn Cloudera Managed Cluster")
-//                                                                .configure(DEPLOY_HBASE, true)
+                                                                .configure(DEPLOY_HBASE, true)
                                                                 )
                                                     .webconsolePort(port)
                                                     .location(location)
