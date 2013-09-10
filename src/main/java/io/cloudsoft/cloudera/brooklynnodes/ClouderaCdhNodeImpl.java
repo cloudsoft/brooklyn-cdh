@@ -3,6 +3,7 @@ package io.cloudsoft.cloudera.brooklynnodes;
 import static io.cloudsoft.cloudera.brooklynnodes.ClouderaManagerNode.log;
 
 import java.io.File;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -113,11 +114,11 @@ public class ClouderaCdhNodeImpl extends SoftwareProcessImpl implements Cloudera
         return location instanceof JcloudsLocation && ((JcloudsLocation) location).getProvider().equals(providerName);
     }
 
-    // 7180, 7182, 8088, 8888, 50030, 50060, 50070, 50090, 60010, 60020, 60030
+    @Override
     protected Collection<Integer> getRequiredOpenPorts() {
-        Set result = MutableSet.of(22, 2181, 7180, 7182, 8088, 8888, 50030, 50060, 50070, 50090, 60010, 60020, 60030);
-        result.addAll(super.getRequiredOpenPorts());
-        return result;
+        return MutableSet.<Integer>builder().addAll(super.getRequiredOpenPorts()).
+                addAll(Arrays.asList(22, 2181, 7180, 7182, 8088, 8888, 50030, 50060, 50070, 50090, 60010, 60020, 60030)).
+                build();
     }
     
     @Override
