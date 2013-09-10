@@ -1,6 +1,5 @@
 package io.cloudsoft.cloudera;
 
-import brooklyn.entity.proxying.EntitySpec;
 import io.cloudsoft.cloudera.brooklynnodes.AllServices;
 import io.cloudsoft.cloudera.brooklynnodes.ClouderaCdhNode;
 import io.cloudsoft.cloudera.brooklynnodes.ClouderaCdhNodeImpl;
@@ -30,9 +29,12 @@ import brooklyn.entity.basic.AbstractApplication;
 import brooklyn.entity.basic.ConfigKeys;
 import brooklyn.entity.basic.Entities;
 import brooklyn.entity.group.DynamicCluster;
+import brooklyn.entity.proxying.EntitySpec;
 import brooklyn.launcher.BrooklynLauncher;
 import brooklyn.location.Location;
 import brooklyn.util.CommandLineUtil;
+import brooklyn.util.time.Duration;
+import brooklyn.util.time.Time;
 
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.Lists;
@@ -42,7 +44,9 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
 
     static final Logger log = LoggerFactory.getLogger(SampleClouderaManagedCluster.class);
     
-    static final String DEFAULT_LOCATION = "aws-ec2:us-east-1";
+    static final String DEFAULT_LOCATION = 
+            "aws-ec2:us-east-1";
+//            "named:ravello";
     
     @CatalogConfig(label="Number of CDH nodes", priority=2)
     public static final ConfigKey<Integer> INITIAL_SIZE_NODES = ConfigKeys.newIntegerConfigKey("cdh.initial.node.count", 
@@ -78,16 +82,17 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
 
     @Override
     public void init() {
+        log.debug("Starting "+this+" with "+getConfigMap().getAllConfig());
+        
         admin = addChild(EntitySpec.create(StartupGroup.class).displayName("Cloudera Hosts and Admin"));
 
         clouderaManagerNode = admin.addChild(EntitySpec.create(DirectClouderaManager.class));
 
         workerCluster = admin.addChild(EntitySpec.create(DynamicCluster.class)
                         .displayName("CDH Nodes")
-                        .configure(
-                                "factory",
-                                ClouderaCdhNodeImpl.newFactory()
-                                        .setConfig(ClouderaCdhNode.MANAGER, clouderaManagerNode))
+                        .configure(DynamicCluster.MEMBER_SPEC,
+                                EntitySpec.create(ClouderaCdhNode.class, ClouderaCdhNodeImpl.class)
+                                    .configure(ClouderaCdhNode.MANAGER, clouderaManagerNode))
                         .configure("initialSize", getConfig(INITIAL_SIZE_NODES)));
 
         services = addChild(EntitySpec.create(AllServices.class).displayName("Cloudera Services"));
@@ -99,6 +104,8 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
     @Override
     public void start(Collection<? extends Location> locations) {
         super.start(locations);
+        log.info("CDH manager and nodes deployed, accessible on "+clouderaManagerNode.getAttribute(ClouderaManagerNode.CLOUDERA_MANAGER_URL));
+        log.info("Manage node hostIds are: "+clouderaManagerNode.getAttribute(ClouderaManagerNode.MANAGED_HOSTS));
         startServices(getConfig(DEPLOY_CERTIFICATION_CLUSTER), getConfig(DEPLOY_HBASE));
     }
     
@@ -145,6 +152,7 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
         }
                 
         // seems to want a restart of ZK then HB after configuring HB
+        Time.sleep(Duration.FIVE_SECONDS);
         log.info("Restarting Zookeeper after configuration change");
         zk.restart();
         if (hb != null) {
@@ -169,7 +177,9 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
         BrooklynLauncher launcher = BrooklynLauncher.newInstance()
                                                     .application(
                                                             EntitySpec.create(SampleClouderaManagedClusterInterface.class)
-                                                            .displayName("Brooklyn Cloudera Managed Cluster"))
+                                                                .displayName("Brooklyn Cloudera Managed Cluster")
+                                                                .configure(DEPLOY_HBASE, true)
+                                                                )
                                                     .webconsolePort(port)
                                                     .location(location)
                                                     .start();

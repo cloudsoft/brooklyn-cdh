@@ -16,7 +16,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import brooklyn.entity.basic.AbstractSoftwareProcessSshDriver;
+import brooklyn.entity.basic.Attributes;
 import brooklyn.entity.basic.EntityLocal;
+import brooklyn.entity.software.SshEffectorTasks;
 import brooklyn.location.basic.SshMachineLocation;
 import brooklyn.location.ibm.smartcloud.IbmSmartLocationConfig;
 import brooklyn.util.ResourceUtils;
@@ -24,6 +26,7 @@ import brooklyn.util.collections.MutableMap;
 import brooklyn.util.internal.Repeater;
 import brooklyn.util.internal.ssh.SshTool;
 import brooklyn.util.ssh.BashCommands;
+import brooklyn.util.task.DynamicTasks;
 import brooklyn.util.time.Time;
 
 import com.google.common.base.Preconditions;
@@ -129,7 +132,17 @@ public class DirectClouderaManagerSshDriver extends AbstractSoftwareProcessSshDr
 
     @Override
     public void customize() {
-        // no-op
+        // nothing needed
+        
+        // except sometimes configuring hostname nicely (as in ClouderaCdhNodeSshDriver, 
+        // except here prefer the public hostname,
+        // as this is what gets advertised to the consumer as the service URL)
+        DynamicTasks.queue(SshEffectorTasks.ssh(
+                BashCommands.alternatives(
+                        "echo `hostname -I` "+entity.getAttribute(Attributes.HOSTNAME)+" >> /etc/hosts",
+                        "echo "+entity.getAttribute(Attributes.HOSTNAME)+" "+entity.getAttribute(Attributes.HOSTNAME)+" >> /etc/hosts")
+            )
+            .runAsRoot()).block();
     }
 
     @Override
