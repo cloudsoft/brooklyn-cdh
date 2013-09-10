@@ -131,11 +131,10 @@ public class ClouderaCdhNodeSshDriver extends AbstractSoftwareProcessSshDriver i
         // (in particular, with ravello when ravello provides 'vm1234.localdomain' and 'ubuntu.localdomain'
         // this call sometimes picks up the latter, even though `hostname -f` somehow seems always to find the former)
         // [furthermore private IP is not always available so do a `hostname -I` to get it, where supported]
+        // TODO could prefer public hostname if public hostname is resolvable internally and externally
         DynamicTasks.queue(SshEffectorTasks.ssh(
                 "echo "+entity.getAttribute(ClouderaCdhNode.PRIVATE_IP)+" "+entity.getAttribute(ClouderaCdhNode.PRIVATE_HOSTNAME)+" >> /etc/hosts",
-                "echo "+entity.getAttribute(ClouderaCdhNode.PRIVATE_IP)+" `hostname -f` >> /etc/hosts",
-                BashCommands.ok("echo `hostname -I` "+entity.getAttribute(ClouderaCdhNode.PRIVATE_HOSTNAME)+" >> /etc/hosts"),
-                BashCommands.ok("echo `hostname -I` `hostname -f` >> /etc/hosts")
+                BashCommands.ok("echo `hostname -I` "+entity.getAttribute(ClouderaCdhNode.PRIVATE_HOSTNAME)+" >> /etc/hosts")
             )
             .runAsRoot()).block();
         
@@ -184,14 +183,24 @@ public class ClouderaCdhNodeSshDriver extends AbstractSoftwareProcessSshDriver i
         }
         entity.setAttribute(ClouderaCdhNode.PRIVATE_IP, ipAddress);
 
+        // TODO should record all available hostnames and IP's and have a smart strategy for determining which to use
+        // (or configure the machines sensibly)
+        
         // but we do need to record the _on-box_ hostname as this is what it is knwon at at the manager        
-        String hostname = getHostname();
-        log.info("hostname of "+getMachine()+" for "+entity+" is "+ hostname + "(ipaddress= " + ipAddress + ")");
+        String hostname = getHostname(), hostnameJclouds=null, hostnameOnbox=null;
         if (getMachine() instanceof JcloudsSshMachineLocation) {
             // returns on-box hostname
-            hostname = ((JcloudsSshMachineLocation)getMachine()).getNode().getHostname();
+            hostnameJclouds = ((JcloudsSshMachineLocation)getMachine()).getNode().getHostname();
         }
-        entity.setAttribute(ClouderaCdhNode.PRIVATE_HOSTNAME, hostname);
+        String onboxName = DynamicTasks.queue(SshEffectorTasks.ssh("hostname -f")).block().getStdout().trim();
+        log.info("hostname of "+getMachine()+" for "+entity+" (ipaddress " + ipAddress + ") is "+
+                hostname + " / " + hostnameJclouds + " / " + hostnameOnbox);
+        if (Strings.isNonEmpty(hostnameOnbox))
+            entity.setAttribute(ClouderaCdhNode.PRIVATE_HOSTNAME, hostnameOnbox);
+        else if (Strings.isNonEmpty(hostnameJclouds))
+            entity.setAttribute(ClouderaCdhNode.PRIVATE_HOSTNAME, hostnameJclouds);
+        else
+            entity.setAttribute(ClouderaCdhNode.PRIVATE_HOSTNAME, hostname);
     }
     
     public void waitForPingable(String description, String targetHostname, Entity fromEntity, Duration timeout) {
