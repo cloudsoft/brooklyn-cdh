@@ -7,4 +7,6 @@
     
     <include resource="brooklyn/logback-debug.xml"/>
 
+    <logger name="io.cloudsoft" level="DEBUG"/>
+    
 </included>
