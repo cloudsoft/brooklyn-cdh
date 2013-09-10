@@ -124,6 +124,8 @@ public class ClouderaCdhNodeSshDriver extends AbstractSoftwareProcessSshDriver i
         
         waitForManagerPingable();
         waitForPingable("client-visible-from-manager", getHostname(), getManager(), Duration.TWO_MINUTES);
+        discoverSubnetAddressInfo();
+        waitForPingable("client-private-visible-from-manager", entity.getAttribute(ClouderaCdhNode.PRIVATE_HOSTNAME), getManager(), Duration.TWO_MINUTES);
         
         ScriptHelper script = newScript(CUSTOMIZING).
                 body.append(
@@ -140,8 +142,6 @@ public class ClouderaCdhNodeSshDriver extends AbstractSoftwareProcessSshDriver i
             Time.sleep(15*1000);
             script.updateTaskAndFailOnNonZeroResultCode().execute();
         }
-
-        discoverSubnetAddressInfo();
     }
 
     private void discoverSubnetAddressInfo() {
