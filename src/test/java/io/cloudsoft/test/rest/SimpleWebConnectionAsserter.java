@@ -63,7 +63,7 @@ public class SimpleWebConnectionAsserter {
 
     public SimpleWebConnectionAsserter assertContentContains(String phrase) {
         String content = getContent();
-        Assert.assertTrue(content.indexOf(phrase)>=0, "Web content missing '"+phrase+"'\nContent is:\n"+content);
+        Assert.assertTrue(content.contains(phrase), "Web content missing '"+phrase+"'\nContent is:\n"+content);
         return this;
     }
 

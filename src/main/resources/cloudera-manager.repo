@@ -1,0 +1,6 @@
+[cloudera-manager]
+# Packages for Cloudera Manager, Version 4, on RedHat or CentOS 6 x86_64
+name=Cloudera Manager
+baseurl=http://ip-address/cm4/redhat/6/x86_64/cm/4.6.0/cloudera-manager/
+gpgkey = http://archive.cloudera.com/cm4/redhat/6/x86_64/cm/RPM-GPG-KEY-cloudera
+gpgcheck = 1

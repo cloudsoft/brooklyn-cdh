@@ -1,25 +1,41 @@
 package io.cloudsoft.cloudera.brooklynnodes;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.Set;
+import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import brooklyn.entity.Entity;
 import brooklyn.entity.basic.AbstractSoftwareProcessSshDriver;
+import brooklyn.entity.basic.Attributes;
 import brooklyn.entity.basic.EntityLocal;
 import brooklyn.entity.basic.SoftwareProcess;
-import brooklyn.entity.basic.lifecycle.CommonCommands;
 import brooklyn.entity.basic.lifecycle.ScriptHelper;
+import brooklyn.entity.effector.EffectorTasks;
+import brooklyn.entity.software.SshEffectorTasks;
+import brooklyn.entity.software.SshEffectorTasks.SshEffectorTaskFactory;
 import brooklyn.event.basic.DependentConfiguration;
 import brooklyn.location.basic.SshMachineLocation;
 import brooklyn.location.jclouds.JcloudsSshMachineLocation;
 import brooklyn.util.ResourceUtils;
-import brooklyn.util.Time;
 import brooklyn.util.exceptions.Exceptions;
+import brooklyn.util.ssh.BashCommands;
+import brooklyn.util.task.DynamicTasks;
+import brooklyn.util.task.system.ProcessTaskWrapper;
+import brooklyn.util.text.Strings;
+import brooklyn.util.time.Duration;
+import brooklyn.util.time.Time;
 
 import com.google.common.base.Preconditions;
+import com.google.common.base.Throwables;
+import com.google.common.collect.Lists;
+import com.google.common.io.CharStreams;
 
 public class ClouderaCdhNodeSshDriver extends AbstractSoftwareProcessSshDriver implements ClouderaCdhNodeDriver {
 
@@ -45,20 +61,45 @@ public class ClouderaCdhNodeSshDriver extends AbstractSoftwareProcessSshDriver i
 
     @Override
     public void install() {
+        entity.setAttribute(ClouderaCdhNode.LOCAL_HOSTNAME, execHostname());
+
+        // TODO move to io/cloudsoft/cloudera inside src/main/resources
         getMachine().copyTo(new ResourceUtils(entity).getResourceFromUrl("classpath://scm_prepare_node.tgz"), "/tmp/scm_prepare_node.tgz");
         getMachine().copyTo(new ResourceUtils(entity).getResourceFromUrl("classpath://etc_cloudera-scm-agent_config.ini"), "/tmp/etc_cloudera-scm-agent_config.ini");
-
+        
+        String aptProxyUrl = getLocation().getConfig(ClouderaCdhNode.APT_PROXY);
+        if(Strings.isNonEmpty(aptProxyUrl)) {
+            InputStream proxy = generatePackageManagerProxyFile(aptProxyUrl);
+            getMachine().copyTo(proxy, "/tmp/02proxy");
+            newScript(INSTALLING+":setAptProxy")
+                .body.append(BashCommands.sudo("mv /tmp/02proxy /etc/apt/apt.conf.d/02proxy"))
+                .execute();
+        }
+        
+        List<String> commands = Lists.newArrayList();
+        commands.add(BashCommands.INSTALL_TAR);
+        commands.add("cd /tmp");
+        commands.add("sudo mkdir /etc/cloudera-scm-agent/");
+        commands.add("sudo mv etc_cloudera-scm-agent_config.ini /etc/cloudera-scm-agent/config.ini");
+        commands.add("tar xzfv scm_prepare_node.tgz");
+        
         newScript(INSTALLING).
                 updateTaskAndFailOnNonZeroResultCode().
-                body.append(
-                    CommonCommands.INSTALL_TAR,
-                    "cd /tmp", 
-                    "sudo mkdir /etc/cloudera-scm-agent/",
-                    "sudo mv etc_cloudera-scm-agent_config.ini /etc/cloudera-scm-agent/config.ini",
-                    "tar xzfv scm_prepare_node.tgz"
-                    ).execute();
+                body.append(commands).execute();
     }
 
+    private InputStream generatePackageManagerProxyFile(String aptProxyUrl) {
+        InputStream proxy = Preconditions.checkNotNull(new ResourceUtils(this).getResourceFromUrl("02proxy"), "cannot find 02proxy");
+        try {
+            String template = CharStreams.toString(new InputStreamReader(proxy));
+            String aptProxy = template.replaceFirst("ip-address", aptProxyUrl);
+            log.debug("PackageManagerProxy set up at: " + aptProxy);
+            return new ByteArrayInputStream(aptProxy.getBytes("UTF-8"));
+        } catch (IOException e) {
+            throw Throwables.propagate(e);
+        }
+    }
+    
     protected String getManagerHostname() {
         try {
             return DependentConfiguration.waitForTask(
@@ -70,7 +111,7 @@ public class ClouderaCdhNodeSshDriver extends AbstractSoftwareProcessSshDriver i
     }
     
     @Override
-    public void customize() {
+    public void customize() {       
         log.info(""+this+" waiting for manager hostname and service-up from "+getManager()+" before installing SCM");
         try {
             DependentConfiguration.waitForTask(
@@ -82,6 +123,19 @@ public class ClouderaCdhNodeSshDriver extends AbstractSoftwareProcessSshDriver i
         log.info(""+this+" got manager hostname as "+getManagerHostname());
         
         waitForManagerPingable();
+        waitForPingable("client-visible-from-manager", getHostname(), getManager(), Duration.TWO_MINUTES);
+        discoverSubnetAddressInfo();
+        waitForPingable("client-private-visible-from-manager", entity.getAttribute(ClouderaCdhNode.PRIVATE_HOSTNAME), getManager(), Duration.TWO_MINUTES);
+        // and ensure the cloudera scm agent gets a sensible hostname (which it reports as host_id to the manager)
+        // it uses python socket.getfqdn() which will sometimes take the wrong name when relying on reverse-DNS 
+        // (in particular, with ravello when ravello provides 'vm1234.localdomain' and 'ubuntu.localdomain'
+        // this call sometimes picks up the latter, even though `hostname -f` somehow seems always to find the former)
+        // [furthermore private IP is not always available so do a `hostname -I` to get it, where supported]
+        // TODO could prefer public hostname if public hostname is resolvable internally and externally
+        DynamicTasks.queue(SshEffectorTasks.ssh(
+                "echo "+entity.getAttribute(ClouderaCdhNode.PRIVATE_IP)+" "+entity.getAttribute(ClouderaCdhNode.PRIVATE_HOSTNAME)+" >> /etc/hosts"
+            )
+            .runAsRoot()).block();
         
         ScriptHelper script = newScript(CUSTOMIZING).
                 body.append(
@@ -98,68 +152,119 @@ public class ClouderaCdhNodeSshDriver extends AbstractSoftwareProcessSshDriver i
             Time.sleep(15*1000);
             script.updateTaskAndFailOnNonZeroResultCode().execute();
         }
-        
-//        ClouderaRestCaller caller = ClouderaRestCaller.newInstance(getManagerHostname(), 
-//                "admin", 
-//                "admin");
+    }
 
+    private void discoverSubnetAddressInfo() {
         // this entity seems to be picked up automatically at manager when agent starts on CDH node, no need to REST add call
-        String ipAddress = null;
-        if (getMachine() instanceof JcloudsSshMachineLocation) {
-            Set<String> addrs = ((JcloudsSshMachineLocation)getMachine()).getNode().getPrivateAddresses();
-            if (!addrs.isEmpty()) {
-                ipAddress = addrs.iterator().next();
-                log.info("IP address (private) of "+getMachine()+" for "+entity+" detected as "+ipAddress);
-            } else {
-                addrs = ((JcloudsSshMachineLocation)getMachine()).getNode().getPublicAddresses();
-                if (!addrs.isEmpty()) {
-                    log.info("IP address (public) of "+getMachine()+" for "+entity+" detected as "+ipAddress);
-                    ipAddress = addrs.iterator().next();
-                }
-            }
-        }
-        if (ipAddress==null) {
+        String ipPublic = getMachine().getAddress().getHostAddress();
+        String ipPrivate1 = entity.getAttribute(Attributes.SUBNET_HOSTNAME);
+        String ipPrivate2 = DynamicTasks.queue(SshEffectorTasks.ssh("hostname -I")).block().getStdout().trim();
+        String ipPrivate3 = null;
+        {
             InetAddress ipAddressIA;
             try {
                 ipAddressIA = InetAddress.getByName(getHostname());
-                if (ipAddressIA!=null) ipAddress = ipAddressIA.getHostAddress();
-                log.info("IP address (hostname) of "+getMachine()+" for "+entity+" detected as "+ipAddress);
+                if (ipAddressIA!=null) ipPrivate3 = ipAddressIA.getHostAddress();
             } catch (UnknownHostException e) {
-                throw new IllegalStateException("Cannor resolve IP address for "+getMachine()+"/"+getHostname()+": "+e, e);
+                log.warn("Cannot resolve IP address for "+getMachine()+"/"+getHostname()+" ("+this+"): "+e);
             }
         }
-        entity.setAttribute(ClouderaCdhNode.PRIVATE_IP, ipAddress);
+        log.info("IP addresses (incl private) of "+getMachine()+" for "+entity+" are "+
+                ipPublic+" / "+ipPrivate1+" / "+ipPrivate2+" / "+ipPrivate3);
+        String ipPrivate = null;
+        if (Strings.isNonEmpty(ipPrivate2)) ipPrivate = ipPrivate2;
+        else if (Strings.isNonEmpty(ipPrivate3)) ipPrivate = ipPrivate3;
+        else if (Strings.isNonEmpty(ipPrivate1)) ipPrivate = ipPrivate1;
+        else if (Strings.isNonEmpty(ipPublic)) ipPrivate = ipPublic;
+        else log.warn("Unable to resolve private IP for "+getMachine()+" ("+this+")");
+        entity.setAttribute(ClouderaCdhNode.PRIVATE_IP, ipPrivate);
 
+        // TODO should record all available hostnames and IP's and have a smart strategy 
+        // (using CIDR's?) for determining which to use -- and possibly configure the machines sensibly
+        
         // but we do need to record the _on-box_ hostname as this is what it is knwon at at the manager        
-        String hostname = getHostname();
+        String hostname = getHostname(), hostnameJclouds=null, hostnameOnbox=null;
         if (getMachine() instanceof JcloudsSshMachineLocation) {
             // returns on-box hostname
-            hostname = ((JcloudsSshMachineLocation)getMachine()).getNode().getHostname();
+            hostnameJclouds = ((JcloudsSshMachineLocation)getMachine()).getNode().getHostname();
         }
-        entity.setAttribute(ClouderaCdhNode.PRIVATE_HOSTNAME, hostname);
-        
+        hostnameOnbox = DynamicTasks.queue(SshEffectorTasks.ssh("hostname -f")).block().getStdout().trim();
+        log.info("Hostnames (incl private) of "+getMachine()+" for "+entity+" (ip " + ipPrivate + ") is "+
+                hostname + " / " + hostnameJclouds + " / " + hostnameOnbox);
+        if (Strings.isNonEmpty(hostnameOnbox))
+            entity.setAttribute(ClouderaCdhNode.PRIVATE_HOSTNAME, hostnameOnbox);
+        else if (Strings.isNonEmpty(hostnameJclouds))
+            entity.setAttribute(ClouderaCdhNode.PRIVATE_HOSTNAME, hostnameJclouds);
+        else
+            entity.setAttribute(ClouderaCdhNode.PRIVATE_HOSTNAME, hostname);
+    }
+    
+    public void waitForPingable(String description, String targetHostname, Entity fromEntity, Duration timeout) {
+        SshMachineLocation sourceMachine = EffectorTasks.getSshMachine(fromEntity);
+        SshEffectorTaskFactory<Integer> sshF = SshEffectorTasks.ssh("ping -c 1 "+targetHostname)
+            .allowingNonZeroExitCode()
+            .machine(sourceMachine)
+            .summary(description);
+        long endTime = System.currentTimeMillis() + timeout.toMilliseconds();
+        int i=0;
+        boolean warned = false;
+        while (true) {
+            i++;
+            ProcessTaskWrapper<Integer> task = DynamicTasks.queue(sshF).block();
+            if (task.get()==0) {
+                if (task.getStdout().indexOf("ubuntu.localdomain")>0) {
+                    String msg = "Pinging "+targetHostname+" ("+description+") from "+fromEntity+" includes phrase 'ubuntu.localdomain'";
+                    if (System.currentTimeMillis()>endTime) {
+                        log.warn(msg+"; timeout encountered, so continuing");
+                        return;
+                    }
+                    if (warned==false) {
+                        log.warn(msg+"; will keep trying (future failures logged at debug)");
+                        warned = true;
+                    } else {
+                        log.debug(msg+"; will keep trying (future failures logged at debug)");                        
+                    }
+                } else {
+                    if (warned) {
+                        log.info("Pinging "+targetHostname+" ("+description+") from "+fromEntity+" no longer includes phrase 'ubuntu.localdomain'");
+                    }
+                    return;
+                }
+            }
+            log.debug("Not yet able to ping node "+targetHostname+" ("+description+") from "+sourceMachine+" (attempt "+i+")");
+            if (System.currentTimeMillis()>endTime)
+                throw new IllegalStateException("Timeout: pinging "+targetHostname+" from "+sourceMachine);
+            Time.sleep(Duration.ONE_SECOND);
+        }
     }
     
     public void waitForManagerPingable() {
-        ScriptHelper script = newScript("wait-for-manager").
-            body.append(
-                "ping -c 1 "+getManagerHostname());
-        long maxEndTime = System.currentTimeMillis() + 120*1000;
-        int i=0;
-        while (true) {
-            int result = script.execute();
-            if (result==0) return;
-            i++;
-            log.debug("Not yet able to ping manager node "+getManagerHostname()+" from "+getMachine()+" for "+entity+" (attempt "+i+")");
-            if (System.currentTimeMillis()>maxEndTime)
-                throw new IllegalStateException("Unable to ping manager node "+getManagerHostname()+" from "+getMachine()+" for "+entity);
-            Time.sleep(1000);
-        }
+        waitForPingable("wait-for-manager", getManagerHostname(), getEntity(), Duration.TWO_MINUTES);
     }
 
     @Override
     public void launch() {
         // nothing needed here, services get launched separately
     }
+    
+    @Override
+    public String toString() {
+        return "SshDriver["+entity+"]";
+    }
+    
+   // TODO Move up to a super-type
+   private String execHostname() {
+      if (log.isTraceEnabled())
+         log.trace("Retrieve `hostname` via ssh for {}", this);
+      ProcessTaskWrapper<Integer> cmd = DynamicTasks.queue(SshEffectorTasks.ssh("echo hostname=`hostname`").summary("getHostname")).block();
+      
+      for (String line : cmd.getStdout().split("\n")) {
+         if (line.contains("hostname=") && !line.contains("`hostname`")) {
+            return line.substring(line.indexOf("hostname=") + "hostname=".length());
+         }
+      }
+      log.info("No hostname found for {} (got {}; {})", this, cmd.getStdout(), cmd.getStderr());
+      return null;
+   }
 
 }

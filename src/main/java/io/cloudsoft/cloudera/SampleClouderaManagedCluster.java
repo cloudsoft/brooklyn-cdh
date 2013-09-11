@@ -1,6 +1,5 @@
 package io.cloudsoft.cloudera;
 
-import static com.google.common.collect.Iterables.getOnlyElement;
 import io.cloudsoft.cloudera.brooklynnodes.AllServices;
 import io.cloudsoft.cloudera.brooklynnodes.ClouderaCdhNode;
 import io.cloudsoft.cloudera.brooklynnodes.ClouderaCdhNodeImpl;
@@ -14,6 +13,7 @@ import io.cloudsoft.cloudera.builders.MapReduceTemplate;
 import io.cloudsoft.cloudera.builders.ZookeeperTemplate;
 import io.cloudsoft.cloudera.rest.RestDataObjects.HdfsRoleType;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -21,15 +21,20 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import brooklyn.catalog.Catalog;
+import brooklyn.catalog.CatalogConfig;
+import brooklyn.config.ConfigKey;
 import brooklyn.enricher.basic.SensorPropagatingEnricher;
 import brooklyn.entity.Entity;
 import brooklyn.entity.basic.AbstractApplication;
+import brooklyn.entity.basic.ConfigKeys;
 import brooklyn.entity.basic.Entities;
 import brooklyn.entity.group.DynamicCluster;
-import brooklyn.entity.proxying.BasicEntitySpec;
-import brooklyn.entity.proxying.EntitySpecs;
+import brooklyn.entity.proxying.EntitySpec;
 import brooklyn.launcher.BrooklynLauncher;
+import brooklyn.location.Location;
 import brooklyn.util.CommandLineUtil;
+import brooklyn.util.time.Duration;
+import brooklyn.util.time.Time;
 
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.Lists;
@@ -38,7 +43,22 @@ import com.google.common.collect.Lists;
 public class SampleClouderaManagedCluster extends AbstractApplication implements SampleClouderaManagedClusterInterface {
 
     static final Logger log = LoggerFactory.getLogger(SampleClouderaManagedCluster.class);
-    static final String DEFAULT_LOCATION = "aws-ec2:us-east-1";
+    
+    static final String DEFAULT_LOCATION = 
+            "aws-ec2:us-east-1";
+//            "named:ravello";
+    
+    @CatalogConfig(label="Number of CDH nodes", priority=2)
+    public static final ConfigKey<Integer> INITIAL_SIZE_NODES = ConfigKeys.newIntegerConfigKey("cdh.initial.node.count", 
+            "Number of CDH nodes to deploy initially", 4);
+
+    @CatalogConfig(label="Certification cluster (metrics enabled)", priority=4)
+    public static final ConfigKey<Boolean> DEPLOY_CERTIFICATION_CLUSTER = ConfigKeys.newBooleanConfigKey("cdh.certificationCluster",
+            "Whether to deploy a certification cluster, i.e. enable metrics collection", true);
+    
+    @CatalogConfig(label="Deploy HBase", priority=4)
+    public static final ConfigKey<Boolean> DEPLOY_HBASE = ConfigKeys.newBooleanConfigKey("cdh.initial.services.hbase",
+            "Whether to deploy HBase as part of initial services roll-out", false);
 
     // Admin - Cloudera Manager Node
     protected Entity admin;
@@ -62,27 +82,34 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
 
     @Override
     public void init() {
-        admin = addChild(EntitySpecs.spec(StartupGroup.class).displayName("Cloudera Hosts and Admin"));
+        log.debug("Starting "+this+" with "+getConfigMap().getAllConfig());
+        
+        admin = addChild(EntitySpec.create(StartupGroup.class).displayName("Cloudera Hosts and Admin"));
 
-        clouderaManagerNode = (ClouderaManagerNode) admin.addChild(getEntityManager().createEntity(
-                EntitySpecs.spec(DirectClouderaManager.class)));
+        clouderaManagerNode = admin.addChild(EntitySpec.create(DirectClouderaManager.class));
 
-        workerCluster = (DynamicCluster) admin.addChild(getEntityManager().createEntity(
-                EntitySpecs
-                        .spec(DynamicCluster.class)
+        workerCluster = admin.addChild(EntitySpec.create(DynamicCluster.class)
                         .displayName("CDH Nodes")
-                        .configure(
-                                "factory",
-                                ClouderaCdhNodeImpl.newFactory()
-                                        .setConfig(ClouderaCdhNode.MANAGER, clouderaManagerNode))
-                        .configure("initialSize", 4)));
+                        .configure(DynamicCluster.MEMBER_SPEC,
+                                EntitySpec.create(ClouderaCdhNode.class, ClouderaCdhNodeImpl.class)
+                                    .configure(ClouderaCdhNode.MANAGER, clouderaManagerNode))
+                        .configure("initialSize", getConfig(INITIAL_SIZE_NODES)));
 
-        services = (AllServices) addChild(getEntityManager().createEntity(
-                BasicEntitySpec.newInstance(AllServices.class).displayName("Cloudera Services")));
+        services = addChild(EntitySpec.create(AllServices.class).displayName("Cloudera Services"));
+
         addEnricher(SensorPropagatingEnricher.newInstanceListeningTo(clouderaManagerNode,
                 ClouderaManagerNode.CLOUDERA_MANAGER_URL));
     }
 
+    @Override
+    public void start(Collection<? extends Location> locations) {
+        super.start(locations);
+        log.info("CDH manager and nodes deployed, accessible on "+clouderaManagerNode.getAttribute(ClouderaManagerNode.CLOUDERA_MANAGER_URL));
+        log.info("Manage node hostIds are: "+clouderaManagerNode.getAttribute(ClouderaManagerNode.MANAGED_HOSTS));
+        startServices(getConfig(DEPLOY_CERTIFICATION_CLUSTER), getConfig(DEPLOY_HBASE));
+    }
+    
+    
     @Override
     public void launchDefaultServices(boolean enabled) {
         launchDefaultServices = enabled;
@@ -100,7 +127,7 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
                 assignRole(HdfsRoleType.DATANODE).toAllHosts().
                 formatNameNodes().
                 enableMetrics(isCertificationCluster).
-                buildWithEntity(clouderaManagerNode);
+                buildWithEntity(services);
             
         new MapReduceTemplate().
                 named("mapreduce-sample").
@@ -125,6 +152,7 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
         }
                 
         // seems to want a restart of ZK then HB after configuring HB
+        Time.sleep(Duration.FIVE_SECONDS);
         log.info("Restarting Zookeeper after configuration change");
         zk.restart();
         if (hb != null) {
@@ -134,30 +162,30 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
         log.info("CDH services now online -- "+clouderaManagerNode.getAttribute(ClouderaManagerNode.CLOUDERA_MANAGER_URL));
     }
 
-    /**
+    /** 
      * Launches the application, along with the brooklyn web-console.
      */
     public static void main(String[] argv) throws Exception {
         List<String> args = Lists.newArrayList(argv);
         String port = CommandLineUtil.getCommandLineOption(args, "--port", "8081+");
         String location = CommandLineUtil.getCommandLineOption(args, "--location", DEFAULT_LOCATION);
-
+        log.debug("Brooklyn will use port {}", port);
+        log.debug("Brooklyn will deploy on location {}", location);
         Stopwatch stopwatch = new Stopwatch();
         stopwatch.start();
-        log.info("Start time for CDH deployment on '" + location +"'");
+        log.info("Start CDH deployment on '" + location +"'");
         BrooklynLauncher launcher = BrooklynLauncher.newInstance()
                                                     .application(
-                                                            EntitySpecs.appSpec(SampleClouderaManagedClusterInterface.class)
-                                                            .displayName("Brooklyn Cloudera Managed Cluster"))
+                                                            EntitySpec.create(SampleClouderaManagedClusterInterface.class)
+                                                                .displayName("Brooklyn Cloudera Managed Cluster")
+                                                                .configure(DEPLOY_HBASE, true)
+                                                                )
                                                     .webconsolePort(port)
                                                     .location(location)
                                                     .start();
         Entities.dumpInfo(launcher.getApplications());
-        SampleClouderaManagedClusterInterface app = 
-                (SampleClouderaManagedClusterInterface) getOnlyElement(launcher.getApplications());
-        app.startServices(true, false);
-        stopwatch.stop(); 
-        log.info("Time to deploy " + location + ": " + stopwatch.elapsedTime(TimeUnit.SECONDS) + " seconds");
+        stopwatch.stop();
+        log.info("Time to deploy " + location + ": " + stopwatch.elapsed(TimeUnit.SECONDS) + " seconds");
     }
 
 }

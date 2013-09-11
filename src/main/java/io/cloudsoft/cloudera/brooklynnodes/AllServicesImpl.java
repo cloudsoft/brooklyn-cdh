@@ -1,34 +1,37 @@
 package io.cloudsoft.cloudera.brooklynnodes;
 
-import groovy.transform.InheritConstructors
 
-import brooklyn.entity.Effector
-import brooklyn.entity.Entity
-import brooklyn.entity.basic.Description
-import brooklyn.entity.basic.MethodEffector
+import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 
-@InheritConstructors
+import brooklyn.entity.Entity;
+import brooklyn.entity.annotation.Effector;
+
 public class AllServicesImpl extends StartupGroupImpl implements AllServices {
+
+    public AllServicesImpl() {
+    }
 
     /**
      * Start the entity in the given collection of locations.
      */
-    @Description("Collect metrics files from all hosts and save to a file on this machine, returning the name of that subdir")
+    @Effector(description="Collect metrics files from all hosts and save to a file on this machine, returning the name of that subdir")
     public String collectMetrics() {
         String name = "cloudera-metrics-"+System.currentTimeMillis();
         String targetBaseDir = "/tmp/cloudera-metrics/";
         new File(targetBaseDir).mkdir();
         String targetDir = targetBaseDir+"/"+name;
         new File(targetDir).mkdir();
-        List<ClouderaCdhNode> nodes = [];
+        List<ClouderaCdhNode> nodes = new ArrayList<ClouderaCdhNode>();
         collectNodes(getApplication(), nodes);
-        nodes.each { it.collectMetrics(targetDir); }
+        for (ClouderaCdhNode it: nodes) { it.collectMetrics(targetDir); }
         return targetDir;
     }
     
     protected void collectNodes(Entity root, List<ClouderaCdhNode> list) {
-        if (root in ClouderaCdhNode) list.add(root);
-        else for (Entity child: root.ownedChildren) {
+        if (root instanceof ClouderaCdhNode) list.add((ClouderaCdhNode) root);
+        else for (Entity child: root.getChildren()) {
             collectNodes(child, list);
         }
     }
