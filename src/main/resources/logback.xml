@@ -1,0 +1,8 @@
+<configuration scan="true">
+
+  <property name="logging.basename" scope="context" value="brooklyn-cdh" />
+  <logger name="io.cloudsoft" level="DEBUG"/>
+  
+  <include resource="logback-main.xml"/>
+    
+</configuration>

@@ -1,0 +1,7 @@
+<included>
+    <!-- filename to log to -->           
+    <property name="logging.basename" scope="context" value="brooklyn-cdh.log" />
+    
+    <!-- additional loggers -->
+    <logger name="io.cloudsoft.cloudera" level="DEBUG"/>
+</included>
