@@ -1,5 +1,18 @@
 package io.cloudsoft.cloudera;
 
+import brooklyn.entity.basic.SoftwareProcess;
+import brooklyn.location.vmware.vcloud.director.VCloudDirectorLocation;
+import brooklyn.location.vmware.vcloud.director.VCloudDirectorLocationConfig;
+import brooklyn.location.vmware.vcloud.director.client.VCloudDirectorHttpClient;
+import brooklyn.location.vmware.vcloud.director.domain.EdgeGateway;
+import brooklyn.location.vmware.vcloud.director.domain.EdgeGatewayServiceConfiguration;
+import brooklyn.location.vmware.vcloud.director.domain.GatewayInterface;
+import brooklyn.location.vmware.vcloud.director.domain.GatewayNatRule;
+import brooklyn.location.vmware.vcloud.director.domain.GatewayNatRuleInterface;
+import brooklyn.location.vmware.vcloud.director.domain.NatRule;
+import brooklyn.location.vmware.vcloud.director.domain.NatService;
+import brooklyn.location.vmware.vcloud.director.domain.QueryResultRecords;
+import brooklyn.location.vmware.vcloud.director.domain.RuleType;
 import io.cloudsoft.cloudera.brooklynnodes.AllServices;
 import io.cloudsoft.cloudera.brooklynnodes.ClouderaCdhNode;
 import io.cloudsoft.cloudera.brooklynnodes.ClouderaCdhNodeImpl;
@@ -39,6 +52,9 @@ import brooklyn.util.time.Time;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.Lists;
 
+import static com.google.common.base.Preconditions.checkNotNull;
+import static io.cloudsoft.cloudera.brooklynnodes.TempCloudUtils.addNatRule;
+
 @Catalog(name = "Cloudera CDH4", description = "Launches Cloudera Distribution for Hadoop Manager with a Cloudera Manager and an initial cluster of 4 CDH nodes (resizable) and default services including HDFS, MapReduce, and HBase", iconUrl = "classpath://io/cloudsoft/cloudera/cloudera.jpg")
 public class SampleClouderaManagedCluster extends AbstractApplication implements SampleClouderaManagedClusterInterface {
 
@@ -46,8 +62,7 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
     
     static final String DEFAULT_LOCATION = 
             "aws-ec2:us-east-1";
-//            "named:ravello";
-    
+
     @CatalogConfig(label="Number of CDH nodes", priority=2)
     public static final ConfigKey<Integer> INITIAL_SIZE_NODES = ConfigKeys.newIntegerConfigKey("cdh.initial.node.count", 
             "Number of CDH nodes to deploy initially", 4);
@@ -59,6 +74,8 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
     @CatalogConfig(label="Deploy HBase", priority=4)
     public static final ConfigKey<Boolean> DEPLOY_HBASE = ConfigKeys.newBooleanConfigKey("cdh.initial.services.hbase",
             "Whether to deploy HBase as part of initial services roll-out", false);
+
+    private static final int CLOUDERA_MANAGER_PORT = 7180;
 
     // Admin - Cloudera Manager Node
     protected Entity admin;
@@ -105,7 +122,7 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
     public void start(Collection<? extends Location> locations) {
         super.start(locations);
         log.info("CDH manager and nodes deployed, accessible on "+clouderaManagerNode.getAttribute(ClouderaManagerNode.CLOUDERA_MANAGER_URL));
-        log.info("Manage node hostIds are: "+clouderaManagerNode.getAttribute(ClouderaManagerNode.MANAGED_HOSTS));
+        log.info("Manage node hostIds are: " + clouderaManagerNode.getAttribute(ClouderaManagerNode.MANAGED_HOSTS));
         startServices(getConfig(DEPLOY_CERTIFICATION_CLUSTER), getConfig(DEPLOY_HBASE));
     }
     
@@ -162,6 +179,28 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
         log.info("CDH services now online -- "+clouderaManagerNode.getAttribute(ClouderaManagerNode.CLOUDERA_MANAGER_URL));
     }
 
+    @Override
+    public void postStart(Collection<? extends Location> locations) {
+        super.postStart(locations);
+        for (Location loc : getLocations()) {
+            if (loc instanceof VCloudDirectorLocation) {
+                String endpoint = ((VCloudDirectorLocation) loc).getEndpoint() + "/api";
+                String identity = ((VCloudDirectorLocation) loc).getIdentity();
+                String credential = ((VCloudDirectorLocation) loc).getCredential();
+                String vdcName = checkNotNull(loc.getConfig(VCloudDirectorLocationConfig.VDC_NAME));
+                String networkName = checkNotNull(loc.getConfig(VCloudDirectorLocationConfig.NETWORK_NAME));
+                String edgeGatewayName = checkNotNull(loc.getConfig(VCloudDirectorLocationConfig.EDGE_GATEWAY_NAME));
+                String originalIp = checkNotNull(loc.getConfig(VCloudDirectorLocationConfig.GATEWAY_PUBLIC_IP));
+                int originalPort = CLOUDERA_MANAGER_PORT;
+                String translatedIp = checkNotNull(getManager().getAttribute(SoftwareProcess.ADDRESS));
+                int translatedPort = CLOUDERA_MANAGER_PORT;
+
+                addNatRule(endpoint, identity, credential, vdcName, networkName, edgeGatewayName, originalIp,
+                        originalPort, translatedIp, translatedPort);
+            }
+        }
+    }
+
     /** 
      * Launches the application, along with the brooklyn web-console.
      */
@@ -173,7 +212,7 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
         log.debug("Brooklyn will deploy on location {}", location);
         Stopwatch stopwatch = new Stopwatch();
         stopwatch.start();
-        log.info("Start CDH deployment on '" + location +"'");
+        log.info("Start CDH deployment on '" + location + "'");
         BrooklynLauncher launcher = BrooklynLauncher.newInstance()
                                                     .application(
                                                             EntitySpec.create(SampleClouderaManagedClusterInterface.class)

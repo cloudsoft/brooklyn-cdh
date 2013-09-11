@@ -91,6 +91,11 @@
             <version>${brooklyn.version}</version>
         </dependency>
         <dependency>
+            <groupId>io.cloudsoft.amp.locations</groupId>
+            <artifactId>vcloud-director</artifactId>
+            <version>${brooklyn.version}</version>
+        </dependency>
+        <dependency>
             <!-- web testing -->
             <groupId>org.simpleframework</groupId>
             <artifactId>simple</artifactId>
