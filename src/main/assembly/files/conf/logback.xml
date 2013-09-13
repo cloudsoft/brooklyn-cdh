@@ -1,0 +1,10 @@
+<configuration>
+
+  <!-- logging configuration for this project; edit this file as required! -->
+
+  <include resource="io/cloudsoft/cloudera/logback-cloudera.xml"/>
+  
+  <!-- for debug, these are recommended in addition to logback-cloudera.xml --> 
+  <include resource="io/cloudsoft/cloudera/logback-cloudera-debug.xml"/>
+
+</configuration>

@@ -2,6 +2,8 @@ package io.cloudsoft.cloudera.brooklynnodes;
 
 import io.cloudsoft.cloudera.rest.ClouderaRestCaller
 
+import java.util.List;
+import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit
 
 import org.apache.commons.configuration.PropertiesConfiguration
@@ -19,15 +21,16 @@ import org.slf4j.LoggerFactory
 
 import brooklyn.config.render.RendererHints
 import brooklyn.entity.Entity
-import brooklyn.event.adapter.FunctionSensorAdapter
-import brooklyn.event.adapter.SensorRegistry
+import brooklyn.event.feed.function.FunctionFeed;
+import brooklyn.event.feed.function.FunctionPollConfig;
 import brooklyn.extras.whirr.core.WhirrClusterImpl
 import brooklyn.location.Location
 import brooklyn.location.jclouds.JcloudsLocation
 import brooklyn.util.GroovyJavaMethods
-import brooklyn.util.NetworkUtils
 import brooklyn.util.internal.Repeater
+import brooklyn.util.net.Networking;
 
+import com.google.common.base.Functions;
 import com.google.common.base.Joiner
 import com.google.common.base.Preconditions
 import com.google.common.collect.Iterables
@@ -91,7 +94,7 @@ public class WhirrClouderaManagerImpl extends WhirrClusterImpl implements WhirrC
         String cmHost = cmServer.publicHostName
         // the above can come back being the internal hostname, in some situations
         try {
-            InetAddress addr = NetworkUtils.resolve(cmHost);
+            InetAddress addr = Networking.resolve(cmHost);
             if (addr==null) throw new NullPointerException("Cannot resolve "+cmHost);
             log.debug("Whirr-reported hostname "+cmHost+" for "+this+" resolved as "+addr);
         } catch (Exception e) {
@@ -132,18 +135,51 @@ public class WhirrClouderaManagerImpl extends WhirrClusterImpl implements WhirrC
 //        setAttribute(SERVICE_UP, true);
     }
     
-    protected transient SensorRegistry sensorRegistry;
+    //protected transient SensorRegistry sensorRegistry;
     
     public void connectSensors() {
+        /*
         if (!sensorRegistry) sensorRegistry = new SensorRegistry(this)
-//        ConfigSensorAdapter.apply(this);
-
         FunctionSensorAdapter fnSensorAdaptor = sensorRegistry.register(new FunctionSensorAdapter({}, period: 30*TimeUnit.SECONDS));
         fnSensorAdaptor.poll(SERVICE_UP, { try { return (getRestCaller().getHosts()!=null) } catch (Exception e) { return false; } });
         fnSensorAdaptor.poll(MANAGED_HOSTS, { getRestCaller().getHosts() });
         fnSensorAdaptor.poll(MANAGED_CLUSTERS, { getRestCaller().getClusters() });
-        
         sensorRegistry.activateAdapters();
+        */
+        FunctionFeed feed = FunctionFeed.builder()
+        .entity(this)
+        .poll(new FunctionPollConfig<Boolean,Boolean>(SERVICE_UP)
+                .period(30, TimeUnit.SECONDS)
+                .callable(new Callable<Boolean>() {
+                    @Override
+                    public Boolean call() throws Exception {
+                        try { return (getRestCaller().getHosts()!=null); }
+                        catch (Exception e) { return false; }
+                    }
+                  })
+                  .onSuccess(Functions.<Boolean>identity())
+                )
+        .poll(new FunctionPollConfig<List,List>(MANAGED_HOSTS)
+                .period(30, TimeUnit.SECONDS)
+                .callable(new Callable<List>() {
+                    @Override
+                    public List call() throws Exception {
+                        return getRestCaller().getHosts();
+                    }
+                  })
+                  .onSuccess(Functions.<List>identity())
+                )
+        .poll(new FunctionPollConfig<List,List>(MANAGED_CLUSTERS)
+                .period(30, TimeUnit.SECONDS)
+                .callable(new Callable<List>() {
+                    @Override
+                    public List call() throws Exception {
+                        return getRestCaller().getClusters();
+                    }
+                  })
+                  .onSuccess(Functions.<List>identity())
+                )
+        .build();
     }
     
     public static void authorizeIngress(ComputeServiceContext computeServiceContext,

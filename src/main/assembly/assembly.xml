@@ -25,7 +25,7 @@
            Adds startup scripts to the root directory of zip package. The startup
            scripts are located to src/main/scripts directory as stated by Maven
            conventions.
-       -->
+        -->
         <fileSet>
             <directory>src/main/assembly/scripts</directory>
             <outputDirectory></outputDirectory>
@@ -34,12 +34,12 @@
                 <include>*</include>
             </includes>
         </fileSet>
-	<!-- add additional files (but not marked executable -->
+	   <!-- add additional files (but not marked executable) -->
         <fileSet>
             <directory>src/main/assembly/files</directory>
             <outputDirectory></outputDirectory>
             <includes>
-                <include>*</include>
+                <include>**</include>
             </includes>
         </fileSet>
         <!-- adds jar package to the root directory of zip package -->
@@ -49,6 +49,9 @@
             <includes>
                 <include>*.jar</include>
             </includes>
+            <excludes>
+                <exclude>*-tests.jar</exclude>
+            </excludes>
         </fileSet>
     </fileSets>
 </assembly>
