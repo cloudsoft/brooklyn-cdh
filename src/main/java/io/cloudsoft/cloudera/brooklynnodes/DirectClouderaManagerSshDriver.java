@@ -20,7 +20,6 @@ import brooklyn.entity.basic.Attributes;
 import brooklyn.entity.basic.EntityLocal;
 import brooklyn.entity.software.SshEffectorTasks;
 import brooklyn.location.basic.SshMachineLocation;
-import brooklyn.location.ibm.smartcloud.IbmSmartLocationConfig;
 import brooklyn.util.ResourceUtils;
 import brooklyn.util.collections.MutableMap;
 import brooklyn.util.internal.Repeater;
@@ -147,17 +146,6 @@ public class DirectClouderaManagerSshDriver extends AbstractSoftwareProcessSshDr
 
     @Override
     public void launch() {
-        // particularly useful for IBM SCE
-        if (getLocation().getConfig(IbmSmartLocationConfig.SELINUX_DISABLED)) {
-            log.debug("Disable SELINUX");
-            newScript(LAUNCHING+":disableSELINUX").setFlag(SshTool.PROP_ALLOCATE_PTY.getName(), true).
-            body.append(
-                    BashCommands.sudo("sed -i \"s/SELINUX=/SELINUX=disabled # it was /\" /etc/selinux/config"),
-                    BashCommands.sudo("reboot"))
-                    .execute();
-            Time.sleep(10*1000L);
-            waitForSshable(getLocation(), getLocation().getConfig(IbmSmartLocationConfig.SSH_REACHABLE_TIMEOUT_MILLIS));
-        }
         
         // TODO should check whether it is an unsupported OS; they can hang
         // specifically, if it is ubuntu but not ubuntu 10.04 / 12.04, we should warn

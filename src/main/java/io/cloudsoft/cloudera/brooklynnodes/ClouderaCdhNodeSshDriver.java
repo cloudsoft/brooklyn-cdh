@@ -263,7 +263,7 @@ public class ClouderaCdhNodeSshDriver extends AbstractSoftwareProcessSshDriver i
             return line.substring(line.indexOf("hostname=") + "hostname=".length());
          }
       }
-      log.info("No hostname found for {} (got {}; {})", this, cmd.getStdout(), cmd.getStderr());
+      log.info("No hostname found for " + this + " (got {" + cmd.getStdout() + "}; {" + cmd.getStderr() + "})");
       return null;
    }
 

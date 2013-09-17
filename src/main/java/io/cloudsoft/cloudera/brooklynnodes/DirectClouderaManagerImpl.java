@@ -1,5 +1,10 @@
 package io.cloudsoft.cloudera.brooklynnodes;
 
+import static io.cloudsoft.cloudera.brooklynnodes.ClouderaManagerNode.log;
+
+import com.cloudera.api.DataView;
+import com.cloudera.api.model.ApiHostList;
+
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -14,36 +19,30 @@ import org.jclouds.aws.util.AWSUtils;
 import org.jclouds.compute.ComputeServiceContext;
 import org.jclouds.compute.domain.OsFamily;
 import org.jclouds.ec2.EC2ApiMetadata;
-import org.jclouds.ec2.EC2AsyncClient;
 import org.jclouds.ec2.EC2Client;
 import org.jclouds.ec2.domain.IpProtocol;
-import org.jclouds.ec2.domain.Reservation;
-import org.jclouds.ec2.domain.RunningInstance;
 import org.jclouds.googlecomputeengine.GoogleComputeEngineApiMetadata;
-import org.jclouds.rest.RestContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.google.common.base.Functions;
-import com.google.common.collect.Iterables;
 
 import brooklyn.config.render.RendererHints;
 import brooklyn.entity.Entity;
 import brooklyn.entity.basic.SoftwareProcessImpl;
 import brooklyn.event.feed.function.FunctionFeed;
 import brooklyn.event.feed.function.FunctionPollConfig;
-import brooklyn.location.Location;
 import brooklyn.location.MachineProvisioningLocation;
 import brooklyn.location.jclouds.JcloudsLocation;
 import brooklyn.location.jclouds.JcloudsLocationConfig;
-import brooklyn.location.jclouds.JcloudsSshMachineLocation;
 import brooklyn.location.jclouds.templates.PortableTemplateBuilder;
 import brooklyn.util.collections.MutableMap;
 import brooklyn.util.collections.MutableSet;
-import brooklyn.util.exceptions.Exceptions;
 import brooklyn.util.internal.Repeater;
 import brooklyn.util.net.Cidr;
-import io.cloudsoft.cloudera.rest.ClouderaRestCaller;
+
+import com.cloudera.api.ApiRootResource;
+import com.cloudera.api.ClouderaManagerClientBuilder;
+import com.google.common.base.Functions;
+import com.google.common.collect.Iterables;
 
 public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements DirectClouderaManager {
 
@@ -152,12 +151,11 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
         //TODO change password on server, ensure RestCallers are reset to use right password
     }
 
-    private ClouderaRestCaller _caller;
-    public synchronized ClouderaRestCaller getRestCaller() {
+    private ClouderaApi _caller;
+    public synchronized ClouderaApi getRestCaller() {
         if (_caller != null) return _caller;
         // TODO use config
-        return _caller = ClouderaRestCaller.newInstance(getAttribute(CLOUDERA_MANAGER_HOSTNAME),
-            "admin", "admin");
+        return _caller = ClouderaApiImpl.getApi(getAttribute(CLOUDERA_MANAGER_HOSTNAME));
     }
     private synchronized void resetRestCaller() {
         _caller = null;
@@ -188,7 +186,7 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
                         .callable(new Callable<Boolean>() {
                             @Override
                             public Boolean call() throws Exception {
-                                try { 
+                                try {
                                     return (getRestCaller().getHosts()!=null); 
                                 } 
                                 catch (Exception e) {

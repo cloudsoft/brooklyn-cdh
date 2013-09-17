@@ -1,5 +1,10 @@
 package io.cloudsoft.cloudera;
 
+import brooklyn.entity.basic.SoftwareProcess;
+import brooklyn.location.vmware.vcloud.director.VCloudDirectorLocation;
+import brooklyn.location.vmware.vcloud.director.VCloudDirectorLocationConfig;
+import brooklyn.location.vmware.vcloud.director.extensions.AdvancedNetworking;
+import brooklyn.location.vmware.vcloud.director.extensions.VCloudDirectorAdvancedNetworking;
 import io.cloudsoft.cloudera.brooklynnodes.AllServices;
 import io.cloudsoft.cloudera.brooklynnodes.ClouderaCdhNode;
 import io.cloudsoft.cloudera.brooklynnodes.ClouderaCdhNodeImpl;
@@ -38,6 +43,9 @@ import brooklyn.util.time.Time;
 
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.Lists;
+import com.google.common.net.HostAndPort;
+
+import static com.google.common.base.Preconditions.checkNotNull;
 
 @Catalog(name = "Cloudera CDH4", description = "Launches Cloudera Distribution for Hadoop Manager with a Cloudera Manager and an initial cluster of 4 CDH nodes (resizable) and default services including HDFS, MapReduce, and HBase", iconUrl = "classpath://io/cloudsoft/cloudera/cloudera.jpg")
 public class SampleClouderaManagedCluster extends AbstractApplication implements SampleClouderaManagedClusterInterface {
@@ -160,6 +168,24 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
             hb.restart();
         }
         log.info("CDH services now online -- "+clouderaManagerNode.getAttribute(ClouderaManagerNode.CLOUDERA_MANAGER_URL));
+    }
+
+    @Override
+    public void postStart(Collection<? extends Location> locations) {
+        super.postStart(locations);
+        for (Location location : getLocations()) {
+            if (location instanceof VCloudDirectorLocation) {
+                if(location.hasExtension(AdvancedNetworking.class)) {
+                    VCloudDirectorAdvancedNetworking advancedNetworking = (VCloudDirectorAdvancedNetworking) location.getExtension(AdvancedNetworking.class);
+                    
+                    String originalIp = checkNotNull(location.getConfig(VCloudDirectorLocationConfig.GATEWAY_PUBLIC_IP));
+                    String translatedIp = checkNotNull(getManager().getAttribute(SoftwareProcess.ADDRESS));
+                    HostAndPort original = HostAndPort.fromParts(originalIp, CLOUDERA_MANAGER_PORT);
+                    HostAndPort translated = HostAndPort.fromParts(translatedIp, CLOUDERA_MANAGER_PORT);
+                    advancedNetworking.addNatRule(original, translated);
+                }
+            }
+        }
     }
 
     /** 

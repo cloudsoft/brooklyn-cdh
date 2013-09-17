@@ -1,6 +1,5 @@
 package io.cloudsoft.cloudera.builders;
 
-import io.cloudsoft.cloudera.rest.ClouderaRestCaller;
 
 @SuppressWarnings("unchecked")
 public abstract class AbstractTemplate<T extends AbstractTemplate<?>> {

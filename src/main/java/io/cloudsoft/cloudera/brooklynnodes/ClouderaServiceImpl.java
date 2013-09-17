@@ -1,6 +1,7 @@
 package io.cloudsoft.cloudera.brooklynnodes;
 
-import io.cloudsoft.cloudera.rest.ClouderaRestCaller;
+import io.cloudsoft.cloudera.rest.ClouderaApi;
+import io.cloudsoft.cloudera.rest.ClouderaApiImpl;
 
 import java.util.Collection;
 import java.util.List;
@@ -24,6 +25,7 @@ import brooklyn.event.feed.function.FunctionFeed;
 import brooklyn.event.feed.function.FunctionPollConfig;
 import brooklyn.location.Location;
 
+import com.cloudera.api.model.ApiRole;
 import com.google.common.base.Functions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
@@ -38,8 +40,8 @@ public class ClouderaServiceImpl extends AbstractEntity implements ClouderaServi
        RendererHints.register(ClouderaService.SERVICE_URL, new RendererHints.NamedActionWithUrl("Open"));
    }
 
-    public ClouderaRestCaller getApi() {
-        return ClouderaRestCaller.newInstance(getConfig(MANAGER).getAttribute(ClouderaManagerNode.CLOUDERA_MANAGER_HOSTNAME), "admin", "admin");
+    public ClouderaApi getApi() {
+        return new ClouderaApiImpl(getConfig(MANAGER).getAttribute(ClouderaManagerNode.CLOUDERA_MANAGER_HOSTNAME), "admin", "admin");
     }
     
     void invokeServiceCommand(String cmd) {
@@ -80,7 +82,7 @@ public class ClouderaServiceImpl extends AbstractEntity implements ClouderaServi
                         @Override
                         public Boolean call() throws Exception {
                             try {
-                                return (getApi().getServices(getClusterName()).contains(getServiceName()));
+                                return (getApi().listServices(getClusterName()).contains(getServiceName()));
                             }
                             catch (Exception e) {
                                 return false;
@@ -93,8 +95,13 @@ public class ClouderaServiceImpl extends AbstractEntity implements ClouderaServi
                             @Override
                             public Collection<String> call() throws Exception {
                                 List<String> ids = Lists.newArrayList();
-                                JSONObject serviceRolesJson = getApi().getServiceRolesJson(getClusterName(), getServiceName());
-                                JSONArray array = serviceRolesJson.getJSONArray("items");
+                                List<ApiRole> roles = getApi().listServiceRoles(getClusterName(), getServiceName());
+                                
+                                for(ApiRole role : roles) {
+                                    role.getId()
+                                }
+                                
+                                //JSONArray array = serviceRolesJson.getJSONArray("items");
                                 for (Object item : array) {
                                     String hostId = ((JSONObject) item).getJSONObject("hostRef").getString("hostId");
                                     ids.add(hostId);

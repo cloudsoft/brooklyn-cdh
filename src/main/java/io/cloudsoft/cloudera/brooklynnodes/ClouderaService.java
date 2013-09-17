@@ -1,8 +1,7 @@
 package io.cloudsoft.cloudera.brooklynnodes;
 
 import io.cloudsoft.cloudera.builders.ServiceTemplate;
-import io.cloudsoft.cloudera.rest.ClouderaRestCaller;
-
+import io.cloudsoft.cloudera.rest.ClouderaApi;
 import java.util.Collection;
 
 import brooklyn.config.ConfigKey;
@@ -55,6 +54,6 @@ public interface ClouderaService extends Entity, Startable {
     @Description("Start the process/service represented by an entity")
     public void create();
 
-    public ClouderaRestCaller getApi();
+    public ClouderaApi getApi();
 
 }
