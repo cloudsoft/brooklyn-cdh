@@ -1,18 +1,12 @@
 package io.cloudsoft.cloudera.brooklynnodes;
 
+import static brooklyn.location.vmware.vcloud.director.client.VCloudDirectorHttpClient.getFirstEdgeGatewayId;
+import static brooklyn.location.vmware.vcloud.director.client.VCloudDirectorHttpClient.getFirstVdcId;
+import static brooklyn.location.vmware.vcloud.director.client.VCloudDirectorHttpClient.getGatewayInterfaceOnInternet;
+
 import java.util.List;
 import java.util.Set;
 
-import brooklyn.location.vmware.vcloud.director.client.VCloudDirectorHttpClient;
-import brooklyn.location.vmware.vcloud.director.domain.EdgeGateway;
-import brooklyn.location.vmware.vcloud.director.domain.EdgeGatewayServiceConfiguration;
-import brooklyn.location.vmware.vcloud.director.domain.GatewayInterface;
-import brooklyn.location.vmware.vcloud.director.domain.GatewayNatRule;
-import brooklyn.location.vmware.vcloud.director.domain.GatewayNatRuleInterface;
-import brooklyn.location.vmware.vcloud.director.domain.NatRule;
-import brooklyn.location.vmware.vcloud.director.domain.NatService;
-import brooklyn.location.vmware.vcloud.director.domain.QueryResultRecords;
-import brooklyn.location.vmware.vcloud.director.domain.RuleType;
 import org.jclouds.compute.ComputeServiceContext;
 import org.jclouds.ec2.EC2AsyncClient;
 import org.jclouds.ec2.EC2Client;
@@ -26,15 +20,19 @@ import org.slf4j.LoggerFactory;
 import brooklyn.location.Location;
 import brooklyn.location.jclouds.JcloudsLocation;
 import brooklyn.location.jclouds.JcloudsSshMachineLocation;
+import brooklyn.location.vmware.vcloud.director.client.VCloudDirectorHttpClient;
+import brooklyn.location.vmware.vcloud.director.domain.EdgeGateway;
+import brooklyn.location.vmware.vcloud.director.domain.EdgeGatewayServiceConfiguration;
+import brooklyn.location.vmware.vcloud.director.domain.GatewayInterface;
+import brooklyn.location.vmware.vcloud.director.domain.NatRule;
+import brooklyn.location.vmware.vcloud.director.domain.NatService;
+import brooklyn.location.vmware.vcloud.director.domain.QueryResultRecords;
+import brooklyn.location.vmware.vcloud.director.extensions.ExternalAccessOptions;
 import brooklyn.util.exceptions.Exceptions;
 import brooklyn.util.net.Cidr;
 
 import com.google.common.collect.Iterables;
-
-import static brooklyn.location.vmware.vcloud.director.client.VCloudDirectorHttpClient.getGatewayInterface;
-import static brooklyn.location.vmware.vcloud.director.client.VCloudDirectorHttpClient.tryFindEdgeGatewayId;
-import static brooklyn.location.vmware.vcloud.director.client.VCloudDirectorHttpClient.tryFindVdcId;
-import static brooklyn.location.vmware.vcloud.director.utils.Networks.getNatRules;
+import com.google.common.net.HostAndPort;
 
 /** Things which are useful, but should be cleaned up, made more protable, and moved to core Brooklyn */ 
 public class TempCloudUtils {
@@ -78,54 +76,4 @@ public class TempCloudUtils {
         // TODO for JcloudsSsh and Jclouds -- in AWS
         // see WhirrClusterManager for example
     }
-
-    /** only supports vcloud-director */
-    public static void addNatRule(String endpoint, String identity, String credential, String vdcName,
-                                  String networkName, String edgeGatewayName, String originalIp,
-                                  int originalPort, String translatedIp, int translatedPort) {
-        VCloudDirectorHttpClient vCloudDirectorHttpClient =
-                new VCloudDirectorHttpClient(endpoint, identity, credential);
-        vCloudDirectorHttpClient.login();
-        QueryResultRecords queryResultRecords = vCloudDirectorHttpClient.listVDCs();
-        String vdcId = tryFindVdcId(queryResultRecords, vdcName);
-        queryResultRecords = vCloudDirectorHttpClient.listEdgeGateways(vdcId);
-        String edgeGatewayId = tryFindEdgeGatewayId(queryResultRecords, edgeGatewayName);
-
-        EdgeGateway edgeGateway = vCloudDirectorHttpClient.getEdgeGateway(edgeGatewayId);
-
-        EdgeGatewayServiceConfiguration edgeGatewayServiceConfiguration = edgeGateway.getConfiguration()
-                .getEdgeGatewayServiceConfiguration();
-        NatService natService = edgeGatewayServiceConfiguration.getNatService();
-        List<NatRule> natRules = getNatRules(vCloudDirectorHttpClient, edgeGatewayId);
-
-        GatewayInterface gatewayInterface = getGatewayInterface(edgeGateway, networkName);
-
-        GatewayNatRuleInterface gatewayNatRuleInterface =
-                GatewayNatRuleInterface.builder()
-                        .name(networkName)
-                        .href(gatewayInterface.getNetwork().getHref())
-                        .build();
-
-        GatewayNatRule gatewayNatRule = GatewayNatRule.builder()
-                .gatewayNatRuleInterface(gatewayNatRuleInterface)
-                .originalIp(originalIp)
-                .originalPort(originalPort)
-                .translatedIp(translatedIp)
-                .translatedPort(translatedPort)
-                .protocol("tcp")
-                .build();
-        NatRule natRule = NatRule.builder()
-                .ruleType(RuleType.DNAT)
-                .enabled(true)
-                .gatewayNatRule(gatewayNatRule)
-                .build();
-
-        natRules.add(natRule);
-        natService.setNatRules(natRules);
-        edgeGatewayServiceConfiguration.setNatService(natService);
-
-        // add NAT rule
-        vCloudDirectorHttpClient.updateNatRules(edgeGatewayId, edgeGatewayServiceConfiguration);
-    }
-
 }

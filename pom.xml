@@ -1,361 +1,407 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-    
-    <groupId>io.cloudsoft.cloudera</groupId>
-    <artifactId>brooklyn-cdh</artifactId>
-    <version>1.2.0-SNAPSHOT</version>
-    <packaging>jar</packaging>
-    
-    <name>Brooklyn Cloudera Manager and Hadoop Descriptor</name>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
 
-    <properties>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+	<groupId>io.cloudsoft.cloudera</groupId>
+	<artifactId>brooklyn-cdh</artifactId>
+	<version>1.2.0-SNAPSHOT</version>
+	<packaging>jar</packaging>
 
-        <groovy.version>1.8.6</groovy.version>
-        <testng.version>6.3.1</testng.version>
-        <brooklyn.version>0.6.0-SNAPSHOT</brooklyn.version>
-        <jclouds.version>1.6.0</jclouds.version>
-        <slf4j.version>1.6.6</slf4j.version>
-        <logback.version>1.0.7</logback.version>
-        <cloudera-whirr-cdh.version>0.8.0-cdh4.1.3</cloudera-whirr-cdh.version>
-        <surefire.version>2.13</surefire.version>
-        
-        <includedTestGroups />
-        <excludedTestGroups>Integration,Acceptance,Live,WIP</excludedTestGroups>
-    </properties>
+	<name>Brooklyn Cloudera Manager and Hadoop Descriptor</name>
 
-    <dependencies>
-        <dependency>
-            <groupId>io.brooklyn</groupId>
-            <artifactId>brooklyn-all</artifactId>
-            <version>${brooklyn.version}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.jclouds</groupId>
-                    <artifactId>jclouds-allcompute</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>io.brooklyn</groupId>
-                    <artifactId>brooklyn-systems-hadoop</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.jclouds.driver</groupId>
-                    <artifactId>jclouds-sshj</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>       
-        <dependency>
-            <groupId>io.brooklyn</groupId>
-            <artifactId>brooklyn-test-support</artifactId>
-            <version>${brooklyn.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.brooklyn</groupId>
-            <artifactId>brooklyn-logback-xml</artifactId>
-            <version>${brooklyn.version}</version>
-            <!-- optional so that this project has logging; dependencies may redeclare or supply their own -->
-            <optional>true</optional>
-            <scope>provided</scope>
-        </dependency>
-        
-        <dependency>
-            <groupId>org.jclouds</groupId>
-            <artifactId>jclouds-allcompute</artifactId>
-            <version>${jclouds.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.jclouds.labs</groupId>
-            <artifactId>google-compute-engine</artifactId>
-            <version>${jclouds.version}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.jclouds</groupId>
-                    <artifactId>jclouds-core</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.jclouds</groupId>
-                    <artifactId>jclouds-compute</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>org.jclouds.driver</groupId>
-            <artifactId>jclouds-sshj</artifactId>
-            <version>${jclouds.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.cloudsoft.amp.locations</groupId>
-            <artifactId>ibm-smartcloud</artifactId>
-            <version>${brooklyn.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.cloudsoft.amp.locations</groupId>
-            <artifactId>vcloud-director</artifactId>
-            <version>${brooklyn.version}</version>
-        </dependency>
-        <dependency>
-            <!-- web testing -->
-            <groupId>org.simpleframework</groupId>
-            <artifactId>simple</artifactId>
-            <version>4.1.9</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.testng</groupId>
-            <artifactId>testng</artifactId>
-            <version>${testng.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.brooklyn</groupId>
-            <artifactId>brooklyn-core</artifactId>
-            <version>${brooklyn.version}</version>
-            <classifier>tests</classifier>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.brooklyn</groupId>
-            <artifactId>brooklyn-software-base</artifactId>
-            <version>${brooklyn.version}</version>
-            <classifier>tests</classifier>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
-    <repositories>
-        <!-- enable sonatype snapshots repo (only for snapshots) -->
-        <repository>
-            <id>sonatype-nexus-snapshots</id>
-            <name>Sonatype Nexus Snapshots</name>
-            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
-            <releases> <enabled>false</enabled> </releases>
-            <snapshots> <enabled>true</enabled> </snapshots>
-        </repository>
-        <repository>
-            <id>cloudera-releases</id>
-            <url>https://repository.cloudera.com/content/groups/cdh-releases-rcs</url>
-        </repository>
-    </repositories>
+		<groovy.version>1.8.6</groovy.version>
+		<testng.version>6.3.1</testng.version>
+		<brooklyn.version>0.6.0-SNAPSHOT</brooklyn.version>
+		<jclouds.version>1.6.0</jclouds.version>
+		<slf4j.version>1.6.6</slf4j.version>
+		<logback.version>1.0.7</logback.version>
+		<cloudera-whirr-cdh.version>0.8.0-cdh4.1.3</cloudera-whirr-cdh.version>
+		<surefire.version>2.13</surefire.version>
 
-    <build>
-        <testSourceDirectory>src/test/java</testSourceDirectory>
-        <testResources>
-            <testResource>
-                <directory>src/test/resources</directory>
-            </testResource>
-        </testResources>
+		<includedTestGroups />
+		<excludedTestGroups>Integration,Acceptance,Live,WIP</excludedTestGroups>
+	</properties>
 
-        <pluginManagement>
-            <plugins>
-                <plugin>
-                    <artifactId>maven-compiler-plugin</artifactId>
-                    <version>2.3.2</version>
-                </plugin>
-                <plugin>
-                    <artifactId>maven-deploy-plugin</artifactId>
-                    <version>2.5</version>
-                </plugin>
-                <plugin>
-                    <artifactId>maven-enforcer-plugin</artifactId>
-                    <version>1.0</version>
-                </plugin>
-                <plugin>
-                    <artifactId>maven-failsafe-plugin</artifactId>
-                    <version>2.9</version>
-                </plugin>
-                <plugin>
-                    <artifactId>maven-jar-plugin</artifactId>
-                    <version>2.3.1</version>
-                </plugin>
+	<dependencies>
+		<dependency>
+			<groupId>io.brooklyn</groupId>
+			<artifactId>brooklyn-all</artifactId>
+			<version>${brooklyn.version}</version>
+			<exclusions>
+				<exclusion>
+					<groupId>org.jclouds</groupId>
+					<artifactId>jclouds-allcompute</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>io.brooklyn</groupId>
+					<artifactId>brooklyn-systems-hadoop</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>io.brooklyn</groupId>
+					<artifactId>brooklyn-systems-openshift</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>org.jclouds.driver</groupId>
+					<artifactId>jclouds-sshj</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<dependency>
+			<groupId>io.brooklyn</groupId>
+			<artifactId>brooklyn-test-support</artifactId>
+			<version>${brooklyn.version}</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>io.brooklyn</groupId>
+			<artifactId>brooklyn-logback-xml</artifactId>
+			<version>${brooklyn.version}</version>
+			<!-- optional so that this project has logging; dependencies may redeclare 
+				or supply their own -->
+			<optional>true</optional>
+			<scope>provided</scope>
+		</dependency>
 
-                <plugin>
-                    <artifactId>maven-eclipse-plugin</artifactId>
-                    <version>2.8</version>
-                    <configuration>
-                        <additionalProjectnatures>
-                            <projectnature>org.eclipse.jdt.groovy.core.groovyNature</projectnature>
-                            <projectnature>org.maven.ide.eclipse.maven2Nature</projectnature>
-                        </additionalProjectnatures>
-                    </configuration>
-                </plugin>
-            </plugins>
-        </pluginManagement>
-        <plugins>
-            <plugin>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <compilerId>groovy-eclipse-compiler</compilerId>
-                    <fork>true</fork>
-                    <verbose>false</verbose>
-                    <source>1.6</source>
-                    <target>1.6</target>
-                </configuration>
-                <dependencies>
-                    <dependency>
-                        <groupId>org.codehaus.groovy</groupId>
-                        <artifactId>groovy-eclipse-compiler</artifactId>
-                        <version>2.6.0-01</version>
-                    </dependency>
-                    <dependency>
-                        <groupId>org.codehaus.groovy</groupId>
-                        <artifactId>groovy-eclipse-batch</artifactId>
-                        <version>1.8.6-01</version>
-                    </dependency>
-                </dependencies>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-assembly-plugin</artifactId>
-                <version>2.2.2</version>
-                <!-- The configuration of the plugin -->
-                <configuration>
-                    <!-- Specifies the configuration file of the assembly plugin -->
-                    <descriptors>
-                        <descriptor>src/main/assembly/assembly.xml</descriptor>
-                    </descriptors>
-                </configuration>
-            </plugin>
-            <plugin>
-                    <!-- 'release' is not used; easier just to checkout, tag, `mvn deploy` manually
-                         with -Dbrooklyn.deployTo=TARGET ... and note we need to update docs and examples, 
-                         which is a non-maven task!) -->
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-release-plugin</artifactId>
-                    <version>2.1</version>
-                    <configuration>
-                        <mavenExecutorId>forked-path</mavenExecutorId>
-                        <useReleaseProfile>false</useReleaseProfile>
-                        <arguments>-Dbrooklyn.deployTo=sonatype</arguments>
-                    </configuration>
-                </plugin>
-        </plugins>
-    </build>
+		<dependency>
+			<groupId>org.jclouds</groupId>
+			<artifactId>jclouds-allcompute</artifactId>
+			<version>${jclouds.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.jclouds.labs</groupId>
+			<artifactId>google-compute-engine</artifactId>
+			<version>${jclouds.version}</version>
+			<exclusions>
+				<exclusion>
+					<groupId>org.jclouds</groupId>
+					<artifactId>jclouds-core</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>org.jclouds</groupId>
+					<artifactId>jclouds-compute</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<dependency>
+			<groupId>org.jclouds.driver</groupId>
+			<artifactId>jclouds-sshj</artifactId>
+			<version>${jclouds.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.cloudsoft.amp.locations</groupId>
+			<artifactId>ibm-smartcloud</artifactId>
+			<version>${brooklyn.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.cloudsoft.amp.locations</groupId>
+			<artifactId>brooklyn-vcloud-director-location</artifactId>
+			<version>${brooklyn.version}</version>
+		</dependency>
+		<dependency>
+			<!-- web testing -->
+			<groupId>org.simpleframework</groupId>
+			<artifactId>simple</artifactId>
+			<version>4.1.9</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.testng</groupId>
+			<artifactId>testng</artifactId>
+			<version>${testng.version}</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>io.brooklyn</groupId>
+			<artifactId>brooklyn-core</artifactId>
+			<version>${brooklyn.version}</version>
+			<classifier>tests</classifier>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>io.brooklyn</groupId>
+			<artifactId>brooklyn-software-base</artifactId>
+			<version>${brooklyn.version}</version>
+			<classifier>tests</classifier>
+			<scope>test</scope>
+		</dependency>
 
-    <profiles>
-        <profile>
-            <id>Live</id>
-            <properties>
-                <includedTestGroups>Live</includedTestGroups>
-                <excludedTestGroups/>
-            </properties>
-        </profile>
-         <profile>
-            <id>Tests</id>
-            <activation>
-                <file> <exists>${basedir}/src/test</exists> </file>
-            </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-surefire-plugin</artifactId>
-                        <version>${surefire.version}</version>
-                        <configuration>
-                            <properties>
-                                <property>
-                                    <name>listener</name>
-                                    <value>brooklyn.test.LoggingVerboseReporter</value>
-                                </property>
-                            </properties>
-                            <enableAssertions>true</enableAssertions>
-                            <groups>${includedTestGroups}</groups>
-                            <excludedGroups>${excludedTestGroups}</excludedGroups>
-                            <testFailureIgnore>false</testFailureIgnore>
-                            <systemPropertyVariables>
-                                <verbose>-1</verbose>
-                                <net.sourceforge.cobertura.datafile>${project.build.directory}/cobertura/cobertura.ser</net.sourceforge.cobertura.datafile>
-                                <cobertura.user.java.nio>false</cobertura.user.java.nio>
-                            </systemPropertyVariables>
-                            <printSummary>true</printSummary>
-                        </configuration>
-                    </plugin>
-                    <plugin>
-                        <artifactId>maven-jar-plugin</artifactId>
-                        <inherited>true</inherited>
-                        <version>2.4</version>
-                        <executions>
-                            <execution>
-                                <id>test-jar-creation</id>
-                                <goals>
-                                    <goal>test-jar</goal>
-                                </goals>
-                                <configuration>
-                                    <forceCreation>true</forceCreation>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
- 
-        <!-- sign and make javadoc when deploying; note, this means you'll need gpg set up to deploy -->
-        <profile>
-            <id>make-more-things-when-deploying</id>
-            <activation> <property><name>brooklyn.deployTo</name></property> </activation>            
-            <build><plugins>
-                <plugin>
-                    <artifactId>maven-javadoc-plugin</artifactId>
-                </plugin>
-                <plugin>
-                    <artifactId>maven-gpg-plugin</artifactId>
-                </plugin>
-            </plugins></build>
-        </profile>
+		<dependency>
+			<groupId>org.codehaus.groovy.modules.http-builder</groupId>
+			<artifactId>http-builder</artifactId>
+			<version>0.6</version>
+			<exclusions>
+				<exclusion>
+				    <groupId>org.apache.httpcomponents</groupId>
+                    <artifactId>httpclient</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+	</dependencies>
 
-        <!-- different properties used to deploy to different locations depending on profiles;
-            default is cloudsoft filesystem repo, but some sources still use cloudsoft artifactory as source
-            (and soon we will support artifactory) -->
-        <profile>
-            <id>cloudsoft-filesystem-repo</id>
-            <activation> <property><name>brooklyn.deployTo</name><value>cloudsoftFilesystem</value></property> </activation>
-            <distributionManagement>
-                <repository>
-                    <id>cloudsoft-deploy-cloudfront-origin-releases</id>
-                    <name>Cloudsoft Release Filesystem repo (used as origin for cloudfront)</name>
-                    <url>scpexe://root@developers-origin.cloudsoftcorp.com/var/www/developers/maven/releases/</url>
-                </repository>
-                <snapshotRepository>
-                    <id>cloudsoft-deploy-cloudfront-origin-snapshots</id>
-                    <name>Cloudsoft Snapshot Filesystem repo (used as origin for cloudfront)</name>
-                    <url>scpexe://root@developers-origin.cloudsoftcorp.com/var/www/developers/maven/snapshots/</url>
-                </snapshotRepository>
-            </distributionManagement>
-        </profile>
-        <profile>
-            <id>cloudsoft-artifactory-repo</id>
-            <activation> <property><name>brooklyn.deployTo</name><value>cloudsoftArtifactory</value></property> </activation>
-            <distributionManagement>
-                <repository>
-                    <id>cloudsoft-deploy-artifactory-release</id>
-                    <name>Cloudsoft Artifactory libs-release-local repo</name>
-                    <url>http://ccweb.cloudsoftcorp.com/maven/libs-release-local/</url>
-                </repository>
-                <snapshotRepository>
-                    <id>cloudsoft-deploy-artifactory-snapshot</id>
-                    <name>Cloudsoft Artifactory libs-snapshot-local repo</name>
-                    <url>http://ccweb.cloudsoftcorp.com/maven/libs-snapshot-local/</url>
-                </snapshotRepository>
-            </distributionManagement>
-        </profile>
-        <profile>
-            <id>sonatype-nexus-repo</id>
-            <activation> <property><name>brooklyn.deployTo</name><value>sonatype</value></property> </activation>
-            <distributionManagement>
-                <repository>
-                    <id>sonatype-nexus-staging</id>
-                    <name>Nexus Release Repository</name>
-                    <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
-                </repository>
-                <snapshotRepository>
-                    <id>sonatype-nexus-snapshots</id>
-                    <name>Sonatype Nexus Snapshots</name>
-                    <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
-                </snapshotRepository>
-            </distributionManagement>
-        </profile>
-    </profiles>
+	<repositories>
+		<!-- enable sonatype snapshots repo (only for snapshots) -->
+		<repository>
+			<id>sonatype-nexus-snapshots</id>
+			<name>Sonatype Nexus Snapshots</name>
+			<url>https://oss.sonatype.org/content/repositories/snapshots</url>
+			<releases>
+				<enabled>false</enabled>
+			</releases>
+			<snapshots>
+				<enabled>true</enabled>
+			</snapshots>
+		</repository>
+		<repository>
+			<id>cloudera-releases</id>
+			<url>https://repository.cloudera.com/content/groups/cdh-releases-rcs</url>
+		</repository>
+	</repositories>
+
+	<build>
+		<testSourceDirectory>src/test/java</testSourceDirectory>
+		<testResources>
+			<testResource>
+				<directory>src/test/resources</directory>
+			</testResource>
+		</testResources>
+
+		<pluginManagement>
+			<plugins>
+				<plugin>
+					<artifactId>maven-compiler-plugin</artifactId>
+					<version>2.3.2</version>
+				</plugin>
+				<plugin>
+					<artifactId>maven-deploy-plugin</artifactId>
+					<version>2.5</version>
+				</plugin>
+				<plugin>
+					<artifactId>maven-enforcer-plugin</artifactId>
+					<version>1.0</version>
+				</plugin>
+				<plugin>
+					<artifactId>maven-failsafe-plugin</artifactId>
+					<version>2.9</version>
+				</plugin>
+				<plugin>
+					<artifactId>maven-jar-plugin</artifactId>
+					<version>2.3.1</version>
+				</plugin>
+
+				<plugin>
+					<artifactId>maven-eclipse-plugin</artifactId>
+					<version>2.8</version>
+					<configuration>
+						<additionalProjectnatures>
+							<projectnature>org.eclipse.jdt.groovy.core.groovyNature</projectnature>
+							<projectnature>org.maven.ide.eclipse.maven2Nature</projectnature>
+						</additionalProjectnatures>
+					</configuration>
+				</plugin>
+			</plugins>
+		</pluginManagement>
+		<plugins>
+			<plugin>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<configuration>
+					<compilerId>groovy-eclipse-compiler</compilerId>
+					<fork>true</fork>
+					<verbose>false</verbose>
+					<source>1.6</source>
+					<target>1.6</target>
+				</configuration>
+				<dependencies>
+					<dependency>
+						<groupId>org.codehaus.groovy</groupId>
+						<artifactId>groovy-eclipse-compiler</artifactId>
+						<version>2.6.0-01</version>
+					</dependency>
+					<dependency>
+						<groupId>org.codehaus.groovy</groupId>
+						<artifactId>groovy-eclipse-batch</artifactId>
+						<version>1.8.6-01</version>
+					</dependency>
+				</dependencies>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-assembly-plugin</artifactId>
+				<version>2.2.2</version>
+				<!-- The configuration of the plugin -->
+				<configuration>
+					<!-- Specifies the configuration file of the assembly plugin -->
+					<descriptors>
+						<descriptor>src/main/assembly/assembly.xml</descriptor>
+					</descriptors>
+				</configuration>
+			</plugin>
+			<plugin>
+				<!-- 'release' is not used; easier just to checkout, tag, `mvn deploy` 
+					manually with -Dbrooklyn.deployTo=TARGET ... and note we need to update docs 
+					and examples, which is a non-maven task!) -->
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-release-plugin</artifactId>
+				<version>2.1</version>
+				<configuration>
+					<mavenExecutorId>forked-path</mavenExecutorId>
+					<useReleaseProfile>false</useReleaseProfile>
+					<arguments>-Dbrooklyn.deployTo=sonatype</arguments>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
+
+	<profiles>
+		<profile>
+			<id>Live</id>
+			<properties>
+				<includedTestGroups>Live</includedTestGroups>
+				<excludedTestGroups />
+			</properties>
+		</profile>
+		<profile>
+			<id>Tests</id>
+			<activation>
+				<file>
+					<exists>${basedir}/src/test</exists>
+				</file>
+			</activation>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-surefire-plugin</artifactId>
+						<version>${surefire.version}</version>
+						<configuration>
+							<properties>
+								<property>
+									<name>listener</name>
+									<value>brooklyn.test.LoggingVerboseReporter</value>
+								</property>
+							</properties>
+							<enableAssertions>true</enableAssertions>
+							<groups>${includedTestGroups}</groups>
+							<excludedGroups>${excludedTestGroups}</excludedGroups>
+							<testFailureIgnore>false</testFailureIgnore>
+							<systemPropertyVariables>
+								<verbose>-1</verbose>
+								<net.sourceforge.cobertura.datafile>${project.build.directory}/cobertura/cobertura.ser</net.sourceforge.cobertura.datafile>
+								<cobertura.user.java.nio>false</cobertura.user.java.nio>
+							</systemPropertyVariables>
+							<printSummary>true</printSummary>
+						</configuration>
+					</plugin>
+					<plugin>
+						<artifactId>maven-jar-plugin</artifactId>
+						<inherited>true</inherited>
+						<version>2.4</version>
+						<executions>
+							<execution>
+								<id>test-jar-creation</id>
+								<goals>
+									<goal>test-jar</goal>
+								</goals>
+								<configuration>
+									<forceCreation>true</forceCreation>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+
+		<!-- sign and make javadoc when deploying; note, this means you'll need 
+			gpg set up to deploy -->
+		<profile>
+			<id>make-more-things-when-deploying</id>
+			<activation>
+				<property>
+					<name>brooklyn.deployTo</name>
+				</property>
+			</activation>
+			<build>
+				<plugins>
+					<plugin>
+						<artifactId>maven-javadoc-plugin</artifactId>
+					</plugin>
+					<plugin>
+						<artifactId>maven-gpg-plugin</artifactId>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+
+		<!-- different properties used to deploy to different locations depending 
+			on profiles; default is cloudsoft filesystem repo, but some sources still 
+			use cloudsoft artifactory as source (and soon we will support artifactory) -->
+		<profile>
+			<id>cloudsoft-filesystem-repo</id>
+			<activation>
+				<property>
+					<name>brooklyn.deployTo</name>
+					<value>cloudsoftFilesystem</value>
+				</property>
+			</activation>
+			<distributionManagement>
+				<repository>
+					<id>cloudsoft-deploy-cloudfront-origin-releases</id>
+					<name>Cloudsoft Release Filesystem repo (used as origin for cloudfront)</name>
+					<url>scpexe://root@developers-origin.cloudsoftcorp.com/var/www/developers/maven/releases/</url>
+				</repository>
+				<snapshotRepository>
+					<id>cloudsoft-deploy-cloudfront-origin-snapshots</id>
+					<name>Cloudsoft Snapshot Filesystem repo (used as origin for cloudfront)</name>
+					<url>scpexe://root@developers-origin.cloudsoftcorp.com/var/www/developers/maven/snapshots/</url>
+				</snapshotRepository>
+			</distributionManagement>
+		</profile>
+		<profile>
+			<id>cloudsoft-artifactory-repo</id>
+			<activation>
+				<property>
+					<name>brooklyn.deployTo</name>
+					<value>cloudsoftArtifactory</value>
+				</property>
+			</activation>
+			<distributionManagement>
+				<repository>
+					<id>cloudsoft-deploy-artifactory-release</id>
+					<name>Cloudsoft Artifactory libs-release-local repo</name>
+					<url>http://ccweb.cloudsoftcorp.com/maven/libs-release-local/</url>
+				</repository>
+				<snapshotRepository>
+					<id>cloudsoft-deploy-artifactory-snapshot</id>
+					<name>Cloudsoft Artifactory libs-snapshot-local repo</name>
+					<url>http://ccweb.cloudsoftcorp.com/maven/libs-snapshot-local/</url>
+				</snapshotRepository>
+			</distributionManagement>
+		</profile>
+		<profile>
+			<id>sonatype-nexus-repo</id>
+			<activation>
+				<property>
+					<name>brooklyn.deployTo</name>
+					<value>sonatype</value>
+				</property>
+			</activation>
+			<distributionManagement>
+				<repository>
+					<id>sonatype-nexus-staging</id>
+					<name>Nexus Release Repository</name>
+					<url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+				</repository>
+				<snapshotRepository>
+					<id>sonatype-nexus-snapshots</id>
+					<name>Sonatype Nexus Snapshots</name>
+					<url>https://oss.sonatype.org/content/repositories/snapshots/</url>
+				</snapshotRepository>
+			</distributionManagement>
+		</profile>
+	</profiles>
 
 </project>

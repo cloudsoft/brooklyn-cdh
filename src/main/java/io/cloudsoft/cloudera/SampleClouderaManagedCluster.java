@@ -1,18 +1,6 @@
 package io.cloudsoft.cloudera;
 
-import brooklyn.entity.basic.SoftwareProcess;
-import brooklyn.location.vmware.vcloud.director.VCloudDirectorLocation;
-import brooklyn.location.vmware.vcloud.director.VCloudDirectorLocationConfig;
-import brooklyn.location.vmware.vcloud.director.client.VCloudDirectorHttpClient;
-import brooklyn.location.vmware.vcloud.director.domain.EdgeGateway;
-import brooklyn.location.vmware.vcloud.director.domain.EdgeGatewayServiceConfiguration;
-import brooklyn.location.vmware.vcloud.director.domain.GatewayInterface;
-import brooklyn.location.vmware.vcloud.director.domain.GatewayNatRule;
-import brooklyn.location.vmware.vcloud.director.domain.GatewayNatRuleInterface;
-import brooklyn.location.vmware.vcloud.director.domain.NatRule;
-import brooklyn.location.vmware.vcloud.director.domain.NatService;
-import brooklyn.location.vmware.vcloud.director.domain.QueryResultRecords;
-import brooklyn.location.vmware.vcloud.director.domain.RuleType;
+import static com.google.common.base.Preconditions.checkNotNull;
 import io.cloudsoft.cloudera.brooklynnodes.AllServices;
 import io.cloudsoft.cloudera.brooklynnodes.ClouderaCdhNode;
 import io.cloudsoft.cloudera.brooklynnodes.ClouderaCdhNodeImpl;
@@ -41,19 +29,23 @@ import brooklyn.entity.Entity;
 import brooklyn.entity.basic.AbstractApplication;
 import brooklyn.entity.basic.ConfigKeys;
 import brooklyn.entity.basic.Entities;
+import brooklyn.entity.basic.SoftwareProcess;
 import brooklyn.entity.group.DynamicCluster;
 import brooklyn.entity.proxying.EntitySpec;
 import brooklyn.launcher.BrooklynLauncher;
 import brooklyn.location.Location;
+import brooklyn.location.vmware.vcloud.director.VCloudDirectorLocation;
+import brooklyn.location.vmware.vcloud.director.VCloudDirectorLocationConfig;
+import brooklyn.location.vmware.vcloud.director.extensions.ExternalAccessOptions;
+import brooklyn.location.vmware.vcloud.director.extensions.LocationPortForwarding;
+import brooklyn.location.vmware.vcloud.director.extensions.VCloudDirectorLocationPortForwarding;
 import brooklyn.util.CommandLineUtil;
 import brooklyn.util.time.Duration;
 import brooklyn.util.time.Time;
 
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.Lists;
-
-import static com.google.common.base.Preconditions.checkNotNull;
-import static io.cloudsoft.cloudera.brooklynnodes.TempCloudUtils.addNatRule;
+import com.google.common.net.HostAndPort;
 
 @Catalog(name = "Cloudera CDH4", description = "Launches Cloudera Distribution for Hadoop Manager with a Cloudera Manager and an initial cluster of 4 CDH nodes (resizable) and default services including HDFS, MapReduce, and HBase", iconUrl = "classpath://io/cloudsoft/cloudera/cloudera.jpg")
 public class SampleClouderaManagedCluster extends AbstractApplication implements SampleClouderaManagedClusterInterface {
@@ -182,21 +174,38 @@ public class SampleClouderaManagedCluster extends AbstractApplication implements
     @Override
     public void postStart(Collection<? extends Location> locations) {
         super.postStart(locations);
-        for (Location loc : getLocations()) {
-            if (loc instanceof VCloudDirectorLocation) {
-                String endpoint = ((VCloudDirectorLocation) loc).getEndpoint() + "/api";
-                String identity = ((VCloudDirectorLocation) loc).getIdentity();
-                String credential = ((VCloudDirectorLocation) loc).getCredential();
-                String vdcName = checkNotNull(loc.getConfig(VCloudDirectorLocationConfig.VDC_NAME));
-                String networkName = checkNotNull(loc.getConfig(VCloudDirectorLocationConfig.NETWORK_NAME));
-                String edgeGatewayName = checkNotNull(loc.getConfig(VCloudDirectorLocationConfig.EDGE_GATEWAY_NAME));
-                String originalIp = checkNotNull(loc.getConfig(VCloudDirectorLocationConfig.GATEWAY_PUBLIC_IP));
+        for (Location location : getLocations()) {
+            if (location instanceof VCloudDirectorLocation) {
+                if(location.hasExtension(LocationPortForwarding.class)) {
+                    VCloudDirectorLocationPortForwarding advancedNetworking = (VCloudDirectorLocationPortForwarding) location.getExtension(LocationPortForwarding.class);
+
+                    String originalIp = checkNotNull(location.getConfig(VCloudDirectorLocationConfig.GATEWAY_PUBLIC_IP));
+                    String translatedIp = checkNotNull(getManager().getAttribute(SoftwareProcess.ADDRESS));
+                    log.info(String.format("Added NAT rule that translates %s:%s to %s:%s", 
+                            originalIp, CLOUDERA_MANAGER_PORT, CLOUDERA_MANAGER_PORT, translatedIp));
+                    ExternalAccessOptions externalAccessOptions = ExternalAccessOptions.builder()
+                                                                                       .publicHost(originalIp)
+                                                                                       .publicPort(CLOUDERA_MANAGER_PORT)
+                                                                                       .privateHost(translatedIp)
+                                                                                       .privatePort(CLOUDERA_MANAGER_PORT)
+                                                                                       .build();
+                    advancedNetworking.enableExternalAccess(externalAccessOptions);
+                }
+                /*
+                String endpoint = ((VCloudDirectorLocation) location).getEndpoint() + "/api";
+                String identity = ((VCloudDirectorLocation) location).getIdentity();
+                String credential = ((VCloudDirectorLocation) location).getCredential();
+                String vdcName = checkNotNull(location.getConfig(VCloudDirectorLocationConfig.VDC_NAME));
+                String networkName = checkNotNull(location.getConfig(VCloudDirectorLocationConfig.NETWORK_NAME));
+                String edgeGatewayName = checkNotNull(location.getConfig(VCloudDirectorLocationConfig.EDGE_GATEWAY_NAME));
+                String originalIp = checkNotNull(location.getConfig(VCloudDirectorLocationConfig.GATEWAY_PUBLIC_IP));
                 int originalPort = CLOUDERA_MANAGER_PORT;
                 String translatedIp = checkNotNull(getManager().getAttribute(SoftwareProcess.ADDRESS));
                 int translatedPort = CLOUDERA_MANAGER_PORT;
 
                 addNatRule(endpoint, identity, credential, vdcName, networkName, edgeGatewayName, originalIp,
                         originalPort, translatedIp, translatedPort);
+                */
             }
         }
     }
