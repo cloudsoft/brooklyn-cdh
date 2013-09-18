@@ -2,14 +2,17 @@ package io.cloudsoft.cloudera.builders;
 
 import brooklyn.entity.proxying.EntitySpec;
 import brooklyn.util.exceptions.Exceptions;
+import com.cloudera.api.model.ApiCluster;
+import com.cloudera.api.model.ApiRole;
+import com.cloudera.api.model.ApiService;
+import com.google.common.base.Optional;
+import com.google.common.base.Predicate;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
 import io.cloudsoft.cloudera.brooklynnodes.ClouderaManagerNode;
 import io.cloudsoft.cloudera.brooklynnodes.ClouderaService;
-import io.cloudsoft.cloudera.rest.ClouderaRestCaller;
-import io.cloudsoft.cloudera.rest.RestDataObjects;
-import io.cloudsoft.cloudera.rest.RestDataObjects.ServiceRoleHostInfo;
-import io.cloudsoft.cloudera.rest.RestDataObjects.ServiceType;
+import io.cloudsoft.cloudera.rest.ClouderaApi;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -30,14 +33,17 @@ import brooklyn.util.text.Identifiers;
 
 import com.google.common.base.Preconditions;
 
+import javax.annotation.Nullable;
+
 public abstract class ServiceTemplate<T extends ServiceTemplate<?>> extends AbstractTemplate<T> {
-    
+
     private static final Logger log = LoggerFactory.getLogger(ServiceTemplate.class);
 
     protected String clusterName;
     protected ClouderaManagerNode manager;
     protected Set<String> hostIds = new LinkedHashSet<String>();
-    
+    protected List<ApiRole> roles = Lists.newArrayList();
+
     @SuppressWarnings("unchecked")
     public T cluster(String clusterName) {
         this.clusterName = clusterName;
@@ -83,11 +89,11 @@ public abstract class ServiceTemplate<T extends ServiceTemplate<?>> extends Abst
     private int roleIndex=0;
     public class RoleAssigner<U> {
         String type;
-        
+
         public RoleAssigner(String roleType) {
             this.type = roleType;
         }
-        
+
         @SuppressWarnings("unchecked")
         public U to(String host) {
             apply(Arrays.asList(host));
@@ -96,14 +102,14 @@ public abstract class ServiceTemplate<T extends ServiceTemplate<?>> extends Abst
 
         @SuppressWarnings("unchecked")
         public U toAllHosts() {
-            if (ServiceTemplate.this.hostIds.isEmpty()) 
+            if (ServiceTemplate.this.hostIds.isEmpty())
                 throw new IllegalStateException("No hosts defined, when defining "+ServiceTemplate.this);
             apply(ServiceTemplate.this.hostIds);
             return (U)ServiceTemplate.this;
         }
 
         public U toAnyHost() {
-            if (ServiceTemplate.this.hostIds.isEmpty()) 
+            if (ServiceTemplate.this.hostIds.isEmpty())
                 throw new IllegalStateException("No hosts defined, when defining "+ServiceTemplate.this);
             if (roleIndex >= ServiceTemplate.this.hostIds.size()) roleIndex = 0;
             int ri = roleIndex;
@@ -123,9 +129,9 @@ public abstract class ServiceTemplate<T extends ServiceTemplate<?>> extends Abst
             }
         }
     }
-    
-    List<ServiceRoleHostInfo> roles = new ArrayList<ServiceRoleHostInfo>();
-    
+
+    //List<ServiceRoleHostInfo> roles = new ArrayList<ServiceRoleHostInfo>();
+
     public RoleAssigner<T> assignRole(String role) {
         return new RoleAssigner<T>(role);
     }
@@ -136,40 +142,56 @@ public abstract class ServiceTemplate<T extends ServiceTemplate<?>> extends Abst
         return (T)this;
     }
 
-    public abstract ServiceType getServiceType();
+    public abstract ClouderaApi.ServiceType getServiceType();
     
     @Override
-    public Boolean build(ClouderaRestCaller caller) {
+    public Boolean build(ClouderaApi api) {
         if (name==null) useDefaultName();
         
-        List<String> clusters = caller.getClusters();
+        List<ApiCluster> clusters = api.listClusters();
         if (clusterName==null) {
-            if (!clusters.isEmpty()) clusterName = clusters.iterator().next();
-            else clusterName = "cluster-"+Identifiers.makeRandomId(6);
+            if (!clusters.isEmpty())
+                clusterName = Iterables.get(clusters, 0).getName();
+            else
+                clusterName = "cluster-"+Identifiers.makeRandomId(6);
         }
-        if (!clusters.contains(clusterName)) caller.addCluster(clusterName);
+        Optional<ApiCluster> apiClusterOptional = Iterables.tryFind(clusters, new Predicate<ApiCluster>() {
+            public boolean apply(@Nullable ApiCluster input) {
+                return input != null && input.getName().equals(clusterName);
+            }
+        });
+        if (!apiClusterOptional.isPresent()) {
+            api.addCluster(clusterName);
+        }
 
-        List<String> services = caller.getServices(clusterName);
-        if (abortIfServiceExists && services.contains(name))
+        List<ApiService> services = api.listServices(clusterName);
+        Optional<ApiService> apiServiceOptional = Iterables.tryFind(services, new Predicate<ApiService>() {
+            public boolean apply(@Nullable ApiService input) {
+                return input != null && input.getName().equals(name);
+            }
+        });
+
+        if (abortIfServiceExists && apiServiceOptional.isPresent()) {
             return true;
-       
-        preServiceAddChecks(caller);
-       
-        caller.addService(clusterName, name, getServiceType());
-        caller.addServiceRoleHosts(clusterName, name, roles.toArray(new ServiceRoleHostInfo[roles.size()]));
-        
-        Object config = caller.getServiceConfig(clusterName, name);
-        Map<?,?> cfgOut = convertConfig(config);
-        caller.setServiceConfig(clusterName, name, cfgOut);
+        }
 
-        return startOnceBuilt(caller);
+        preServiceAddChecks(api);
+       
+        api.addService(clusterName, name, getServiceType());
+        api.addServiceRoleHosts(clusterName, name, roles.toArray(new ServiceRoleHostInfo[roles.size()]));
+        
+        Object config = api.getServiceConfig(clusterName, name);
+        Map<?,?> cfgOut = convertConfig(config);
+        api.setServiceConfig(clusterName, name, cfgOut);
+
+        return startOnceBuilt(api);
     }
 
-    protected void preServiceAddChecks(ClouderaRestCaller caller) {
+    protected void preServiceAddChecks(ClouderaApi api) {
     }
     
-    protected boolean startOnceBuilt(ClouderaRestCaller caller) {
-        return caller.invokeServiceCommand(clusterName, name, "start").block(60*1000);
+    protected boolean startOnceBuilt(ClouderaApi api) {
+        return api.invokeServiceCommand(clusterName, name, "start").block(60*1000);
     }
 
     protected Map<?, ?> convertConfig(Object config) {

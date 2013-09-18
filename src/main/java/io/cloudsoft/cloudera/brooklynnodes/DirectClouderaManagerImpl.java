@@ -94,8 +94,8 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
                     .rethrowException().repeat().every(1, TimeUnit.SECONDS)
                     .until(new Callable<Boolean>() {
                         public Boolean call() {
-                            resetRestCaller();
-                            return (getRestCaller().getClusters()!=null);
+                            resetRootApi();
+                            return (getRootApi().listClusters() != null);
                     }}).run()) {
             throw new IllegalStateException("Timeout waiting for successful REST call to ${this}");
         }
@@ -111,7 +111,7 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
         // TODO use config
         return _caller = new ClouderaApiImpl(getAttribute(CLOUDERA_MANAGER_HOSTNAME), "admin", "admin");
     }
-    private synchronized void resetRestCaller() {
+    private synchronized void resetRootApi() {
         _caller = null;
     }
 
@@ -141,7 +141,7 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
                             @Override
                             public Boolean call() throws Exception {
                                 try {
-                                    return (getRestCaller().getHosts()!=null);
+                                    return (getRootApi().listHosts()!=null);
                                 } 
                                 catch (Exception e) {
                                     log.error("Cannot execute getRestCaller().getHosts()", e); 
@@ -156,7 +156,7 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
                         .callable(new Callable<List>() {
                             @Override
                             public List call() throws Exception {
-                                return getRestCaller().getHosts();
+                                return getRootApi().listHosts();
                             }
                           })
                           .onSuccess(Functions.<List>identity())
@@ -166,7 +166,7 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
                         .callable(new Callable<List>() {
                             @Override
                             public List call() throws Exception {
-                                return getRestCaller().getClusters();
+                                return getRootApi().listClusters();
                             }
                           })
                           .onSuccess(Functions.<List>identity())

@@ -1,5 +1,10 @@
 package io.cloudsoft.cloudera.brooklynnodes;
 
+import brooklyn.util.collections.MutableMap;
+import brooklyn.util.internal.Repeater;
+import com.cloudera.api.model.ApiCommand;
+import com.cloudera.api.model.ApiService;
+import com.cloudera.api.model.ApiServiceState;
 import io.cloudsoft.cloudera.rest.ClouderaApi;
 import io.cloudsoft.cloudera.rest.ClouderaApiImpl;
 
@@ -43,13 +48,15 @@ public class ClouderaServiceImpl extends AbstractEntity implements ClouderaServi
     public ClouderaApi getApi() {
         return new ClouderaApiImpl(getConfig(MANAGER).getAttribute(ClouderaManagerNode.CLOUDERA_MANAGER_HOSTNAME), "admin", "admin");
     }
-    
-    void invokeServiceCommand(String cmd) {
-        boolean result = getApi().invokeServiceCommand(getClusterName(), getServiceName(), cmd).block(5 * 60 * 1000);
-        if (!result) {
-            setAttribute(SERVICE_STATE, Lifecycle.ON_FIRE);
-            throw new IllegalStateException("The service failed to " + cmd + ".");
-        }
+
+    void startService() {
+        final ApiCommand apiCommand = getApi().invokeServiceCommand(getClusterName(), getServiceName(), ClouderaApi.Command.START);
+        retryIsCommandSuccessful(apiCommand);
+    }
+
+    void restartService() {
+        final ApiCommand apiCommand = getApi().invokeServiceCommand(getClusterName(), getServiceName(), ClouderaApi.Command.RESTART);
+        retryIsCommandSuccessful(apiCommand);
     }
 
     public void create() {
@@ -76,77 +83,77 @@ public class ClouderaServiceImpl extends AbstractEntity implements ClouderaServi
     protected void connectSensors() {
         feed = FunctionFeed.builder()
                 .entity(this)
-                .poll(new FunctionPollConfig<Boolean,Boolean>(SERVICE_REGISTERED)
-                    .period(30, TimeUnit.SECONDS)
-                    .callable(new Callable<Boolean>() {
-                        @Override
-                        public Boolean call() throws Exception {
-                            try {
-                                return (getApi().listServices(getClusterName()).contains(getServiceName()));
+                .poll(new FunctionPollConfig<Boolean, Boolean>(SERVICE_REGISTERED)
+                        .period(30, TimeUnit.SECONDS)
+                        .callable(new Callable<Boolean>() {
+                            @Override
+                            public Boolean call() throws Exception {
+                                try {
+                                    return (getApi().listServices(getClusterName()).contains(getServiceName()));
+                                } catch (Exception e) {
+                                    return false;
+                                }
                             }
-                            catch (Exception e) {
-                                return false;
-                            }
-                        }
-                    })
-                    .onException(Functions.constant(false)))
+                        })
+                        .onException(Functions.constant(false)))
                 .poll(new FunctionPollConfig<Collection<String>, Collection<String>>(HOSTS)
                         .period(30, TimeUnit.SECONDS).callable(new Callable<Collection<String>>() {
                             @Override
                             public Collection<String> call() throws Exception {
                                 List<String> ids = Lists.newArrayList();
                                 List<ApiRole> roles = getApi().listServiceRoles(getClusterName(), getServiceName());
-                                
-                                for(ApiRole role : roles) {
-                                    role.getId()
+
+                                for (ApiRole role : roles) {
+                                    ids.add(role.getHostRef().getHostId());
                                 }
-                                
-                                //JSONArray array = serviceRolesJson.getJSONArray("items");
-                                for (Object item : array) {
-                                    String hostId = ((JSONObject) item).getJSONObject("hostRef").getString("hostId");
-                                    ids.add(hostId);
-                                }
+
                                 return ids;
                             }
                         }))
                 .poll(new FunctionPollConfig<Collection<String>, Collection<String>>(ROLES)
-                    .period(30, TimeUnit.SECONDS)
-                    .callable(new Callable<Collection<String>>() {
-                        @Override
-                        public Collection<String> call() throws Exception {
-                            Set<String> types = Sets.newHashSet();
-                            JSONObject serviceRolesJson = getApi().getServiceRolesJson(getClusterName(), getServiceName());
-                            JSONArray array = serviceRolesJson.getJSONArray("items");
-                            for (Object item : array) {
-                                String type = ((JSONObject) item).getString("type");
-                                types.add(type);
+                        .period(30, TimeUnit.SECONDS)
+                        .callable(new Callable<Collection<String>>() {
+                            @Override
+                            public Collection<String> call() throws Exception {
+                                Set<String> types = Sets.newHashSet();
+                                List<ApiRole> serviceRoles = getApi().listServiceRoles(getClusterName(), getServiceName());
+
+                                for (ApiRole role : serviceRoles) {
+                                    types.add(role.getType());
+                                }
+
+                                return types;
                             }
-                            return types;
-                        }
-                    }))
-                .poll(new FunctionPollConfig<Boolean,Boolean>(SERVICE_UP)
-                    .period(30, TimeUnit.SECONDS)
-                    .callable(new Callable<Boolean>() {
-                        @Override
-                        public Boolean call() throws Exception {
-                            try {
-                                JSONObject serviceJson = getApi().getServiceJson(getClusterName(), getServiceName());
-                                return serviceJson.getString("serviceState").equals("STARTED");
+                        }))
+                .poll(new FunctionPollConfig<Boolean, Boolean>(SERVICE_UP)
+                        .period(30, TimeUnit.SECONDS)
+                        .callable(new Callable<Boolean>() {
+                            @Override
+                            public Boolean call() throws Exception {
+                                try {
+                                    ApiService service = getApi().getService(getClusterName(), getServiceName());
+
+                                    return service.getServiceState().equals(ApiServiceState.STARTED);
+
+                                    //return serviceJson.getString("serviceState").equals("STARTED");
+                                } catch (Exception e) {
+                                    log.error("Can't connect to " + getServiceName(), e);
+                                    return false;
+                                }
                             }
-                            catch (Exception e) {
-                                log.error("Can't connect to " + getServiceName(), e);
-                                return false;
-                            }
-                        }
-                    })
-                    .onException(Functions.constant(false)))
+                        })
+                        .onException(Functions.constant(false)))
                 .poll(new FunctionPollConfig<String, String>(SERVICE_HEALTH)
                     .period(30, TimeUnit.SECONDS)
                     .callable(new Callable<String>() {
                         @Override
                         public String call() throws Exception {
+                            ApiService service = getApi().getService(getClusterName(), getServiceName());
+                            return service.getHealthSummary().toString();
+                            /*
                             JSONObject serviceJson = getApi().getServiceJson(getClusterName(), getServiceName());
                             return serviceJson.getString("healthSummary");
+                            */
                         }
                     }))
                 .poll(new FunctionPollConfig<String, String>(SERVICE_URL)
@@ -154,8 +161,12 @@ public class ClouderaServiceImpl extends AbstractEntity implements ClouderaServi
                     .callable(new Callable<String>() {
                         @Override
                         public String call() throws Exception {
+                            ApiService service = getApi().getService(getClusterName(), getServiceName());
+                            return service.getServiceUrl();
+                            /*
                             JSONObject serviceJson = getApi().getServiceJson(getClusterName(), getServiceName());
                             return serviceJson.getString("serviceUrl");
+                            */
                         }
                     }))
                 .build();
@@ -173,7 +184,7 @@ public class ClouderaServiceImpl extends AbstractEntity implements ClouderaServi
             return;
         }
         setAttribute(SERVICE_STATE, Lifecycle.STARTING);
-        invokeServiceCommand("start");
+        startService();
         setAttribute(SERVICE_STATE, Lifecycle.RUNNING);
     }
 
@@ -189,8 +200,30 @@ public class ClouderaServiceImpl extends AbstractEntity implements ClouderaServi
     @Description("Restart the process/service represented by an entity")
     public void restart() {
         setAttribute(SERVICE_STATE, Lifecycle.STARTING);
-        invokeServiceCommand("restart");
+        restartService();
         setAttribute(SERVICE_STATE, Lifecycle.RUNNING);
     }
 
+
+    private void retryIsCommandSuccessful(final ApiCommand apiCommand) {
+        if (!Repeater.create(MutableMap.of("timeout", 5 * 60 * 1000, "description", "Waiting for successful REST call to " + this))
+                .rethrowException().repeat().every(1, TimeUnit.SECONDS)
+                .until(new Callable<Boolean>() {
+                    public Boolean call() {
+                        return getApi().isCommandSuccessful(apiCommand.getId());
+                    }
+                }).run()) {
+            setAttribute(SERVICE_STATE, Lifecycle.ON_FIRE);
+            throw new IllegalStateException("The service failed to " + ClouderaApi.Command.START + ".");
+        }
+    }
+
+        /*
+        boolean result = getApi().invokeServiceCommand(getClusterName(), getServiceName(), ClouderaApi.Command.START).block(5 * 60 * 1000);
+        if (!result) {
+            setAttribute(SERVICE_STATE, Lifecycle.ON_FIRE);
+            throw new IllegalStateException("The service failed to " + cmd + ".");
+        }
+    }
+        */
 }

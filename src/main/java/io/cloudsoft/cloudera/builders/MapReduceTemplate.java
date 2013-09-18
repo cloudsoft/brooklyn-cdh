@@ -1,11 +1,10 @@
 package io.cloudsoft.cloudera.builders;
 
+import com.cloudera.api.model.ApiService;
+import com.google.common.collect.Iterables;
 import io.cloudsoft.cloudera.brooklynnodes.ClouderaCdhNode;
-import io.cloudsoft.cloudera.rest.ClouderaRestCaller;
+import io.cloudsoft.cloudera.rest.ClouderaApi;
 import io.cloudsoft.cloudera.rest.RestDataObjects;
-import io.cloudsoft.cloudera.rest.RestDataObjects.MapReduceRoleType;
-import io.cloudsoft.cloudera.rest.RestDataObjects.ServiceRoleHostInfo;
-import io.cloudsoft.cloudera.rest.RestDataObjects.ServiceType;
 
 import java.util.List;
 import java.util.Map;
@@ -18,7 +17,7 @@ public class MapReduceTemplate extends ServiceTemplate<MapReduceTemplate> {
     private static final Logger log = LoggerFactory.getLogger(MapReduceTemplate.class);
 
     @Override
-    public ServiceType getServiceType() { return ServiceType.MAPREDUCE; }
+    public ClouderaApi.ServiceType getServiceType() { return ClouderaApi.ServiceType.MAPREDUCE; }
 
     public RoleAssigner<MapReduceTemplate> assignRole(MapReduceRoleType role) {
         return assignRole(role.name());
@@ -56,11 +55,11 @@ public class MapReduceTemplate extends ServiceTemplate<MapReduceTemplate> {
     }
 
     @Override
-    protected void preServiceAddChecks(ClouderaRestCaller caller) {
+    protected void preServiceAddChecks(ClouderaApi api) {
         if (hdfsServiceName==null) {
-            List<String> hdfss = caller.findServicesOfType(clusterName, ServiceType.HDFS);
+            List<ApiService> hdfss = api.findServicesOfType(clusterName, ClouderaApi.ServiceType.HDFS);
             if (hdfss.isEmpty()) throw new IllegalStateException("HDFS cluster required before can start MAPREDUCE");
-            hdfsServiceName = hdfss.iterator().next();
+            hdfsServiceName = Iterables.getOnlyElement(hdfss).getName();
         }
         
         if (jobtrackerLocalDataDir==null) {
@@ -109,21 +108,5 @@ public class MapReduceTemplate extends ServiceTemplate<MapReduceTemplate> {
         log.debug("MapReduce ${name} converted config: "+cfgOut);
         return cfgOut;
     }
-    
-    public static void main(String[] args) {
-        String SERVER = "ec2-107-22-7-107.compute-1.amazonaws.com",
-            H1 = "ip-10-114-39-149.ec2.internal",
-            H2 = "ip-10-144-18-90.ec2.internal",
-            H3 = "ip-10-60-154-21.ec2.internal";
-        
-        ClouderaRestCaller caller = ClouderaRestCaller.newInstance(SERVER, "admin", "admin");
-
-        System.out.println(new MapReduceTemplate().
-                hosts(H1, H2, H3).
-                assignRole(MapReduceRoleType.JOBTRACKER).to(H1).
-                assignRole(MapReduceRoleType.TASKTRACKER).toAllHosts().
-            build(caller));
-    }
-
 
 }

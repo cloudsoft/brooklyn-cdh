@@ -1,5 +1,6 @@
 package io.cloudsoft.cloudera.builders;
 
+import io.cloudsoft.cloudera.rest.ClouderaApi;
 
 @SuppressWarnings("unchecked")
 public abstract class AbstractTemplate<T extends AbstractTemplate<?>> {
@@ -16,6 +17,6 @@ public abstract class AbstractTemplate<T extends AbstractTemplate<?>> {
         return name;
     }
 
-    public abstract Object build(ClouderaRestCaller caller);
+    public abstract Object build(ClouderaApi api);
 
 }

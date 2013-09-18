@@ -146,7 +146,12 @@
                 </exclusion>
             </exclusions>			
 		</dependency>
-	</dependencies>
+        <dependency>
+            <groupId>com.google.mockwebserver</groupId>
+            <artifactId>mockwebserver</artifactId>
+            <version>20121111</version>
+        </dependency>
+    </dependencies>
 
 	<repositories>
 		<!-- enable sonatype snapshots repo (only for snapshots) -->

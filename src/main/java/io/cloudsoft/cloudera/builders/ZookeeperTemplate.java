@@ -1,6 +1,7 @@
 package io.cloudsoft.cloudera.builders;
 
 import io.cloudsoft.cloudera.brooklynnodes.ClouderaCdhNode;
+import io.cloudsoft.cloudera.rest.ClouderaApi;
 import io.cloudsoft.cloudera.rest.ClouderaRestCaller;
 import io.cloudsoft.cloudera.rest.RestDataObjects.ServiceRoleHostInfo;
 import io.cloudsoft.cloudera.rest.RestDataObjects.ServiceType;
@@ -26,7 +27,7 @@ public class ZookeeperTemplate extends ServiceTemplate<ZookeeperTemplate> {
  
 
     @Override
-    protected void preServiceAddChecks(ClouderaRestCaller caller) {
+    protected void preServiceAddChecks(ClouderaApi api) {
         for (ServiceRoleHostInfo role: roles) {
             if (ZookeeperRoleType.SERVER.toString().equalsIgnoreCase(role.type)) {
                 String hostId = (String)role.hostRef.get("hostId");
