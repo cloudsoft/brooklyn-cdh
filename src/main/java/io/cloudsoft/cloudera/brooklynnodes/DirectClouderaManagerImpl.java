@@ -13,6 +13,8 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
+import io.cloudsoft.cloudera.rest.ClouderaApi;
+import io.cloudsoft.cloudera.rest.ClouderaApiImpl;
 import org.apache.whirr.Cluster.Instance;
 import org.apache.whirr.ClusterSpec;
 import org.jclouds.aws.util.AWSUtils;
@@ -52,14 +54,7 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
     static {
         RendererHints.register(CLOUDERA_MANAGER_URL, new RendererHints.NamedActionWithUrl("Open"));
     }
-//
-//    @Override
-//    public void init() {
-//        super.init();
-//        setConfig(APT_PROXY, getManagementContext().getConfig().getFirst(APT_PROXY.getName()));
-//        setConfig(USE_IP_ADDRESS, getManagementContext().getConfig().getFirst(USE_IP_ADDRESS.getName()));
-//    }
-    
+
     @Override
     public Class getDriverInterface() {
         return DirectClouderaManagerDriver.class;
@@ -70,47 +65,6 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
         return MutableSet.<Integer>builder().addAll(super.getRequiredOpenPorts()).
                 addAll(Arrays.asList(22, 2181, 7180, 7182, 8088, 8888, 50030, 50060, 50070, 50090, 60010, 60020, 60030)).
                 build();
-    }
-
-    @Override
-    @SuppressWarnings({ "rawtypes", "unchecked" })
-    protected Map<String, Object> obtainProvisioningFlags(MachineProvisioningLocation location) {
-        Map flags = super.obtainProvisioningFlags(location);
-        PortableTemplateBuilder portableTemplateBuilder = new PortableTemplateBuilder();
-        if (isJcloudsLocation(location, "aws-ec2")) {
-            portableTemplateBuilder.osFamily(OsFamily.UBUNTU).osVersionMatches("12.04").os64Bit(true).minRam(2500);
-            flags.put(JcloudsLocationConfig.TEMPLATE_BUILDER.getName(), portableTemplateBuilder);
-        } else if (isJcloudsLocation(location, "google-compute-engine")) {
-            flags.putAll(GoogleComputeEngineApiMetadata.defaultProperties());
-            flags.put("groupId", "brooklyn-cdh");
-            flags.put(JcloudsLocationConfig.TEMPLATE_BUILDER.getName(),
-                    portableTemplateBuilder.osFamily(OsFamily.CENTOS).osVersionMatches("6").os64Bit(true)
-                            .locationId("us-central1-a").minRam(2560));
-        } else if (isJcloudsLocation(location, "openstack-nova")) {
-            String imageId = location.getConfig(JcloudsLocationConfig.IMAGE_ID);
-            if(imageId != null) {
-                portableTemplateBuilder.imageId(imageId);
-            }
-            String hardwareId = location.getConfig(JcloudsLocationConfig.HARDWARE_ID);
-            if(hardwareId != null) {
-                portableTemplateBuilder.hardwareId(hardwareId);
-            }
-            flags.put(JcloudsLocationConfig.TEMPLATE_BUILDER.getName(), portableTemplateBuilder);
-        } else if (isJcloudsLocation(location, "rackspace-cloudservers-uk") || 
-                isJcloudsLocation(location, "cloudservers-uk")) {
-            // securityGroups are not supported
-            flags.put(JcloudsLocationConfig.TEMPLATE_BUILDER.getName(),
-                    portableTemplateBuilder.osFamily(OsFamily.CENTOS).osVersionMatches("6").os64Bit(true)
-                    .minRam(2560));
-        } else if (isJcloudsLocation(location, "bluelock-vcloud-zone01")) {
-            System.setProperty("jclouds.vcloud.timeout.task-complete", 600 * 1000 + "");
-            // this is a constraint for dns name on vcloud (3-15 characters)
-            flags.put("groupId", "brooklyn");
-            flags.put(JcloudsLocationConfig.TEMPLATE_BUILDER.getName(),
-            //    portableTemplateBuilder.osFamily(OsFamily.CENTOS).osVersionMatches("6").os64Bit(true));
-            portableTemplateBuilder.imageId("https://zone01.bluelock.com/api/v1.0/vAppTemplate/vappTemplate-e0717fc0-0b7f-41f7-a275-3e03881d99db"));
-        }
-        return flags;
     }
 
     private boolean isJcloudsLocation(MachineProvisioningLocation location, String providerName) {
@@ -152,10 +106,10 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
     }
 
     private ClouderaApi _caller;
-    public synchronized ClouderaApi getRestCaller() {
+    public synchronized ClouderaApi getRootApi() {
         if (_caller != null) return _caller;
         // TODO use config
-        return _caller = ClouderaApiImpl.getApi(getAttribute(CLOUDERA_MANAGER_HOSTNAME));
+        return _caller = new ClouderaApiImpl(getAttribute(CLOUDERA_MANAGER_HOSTNAME), "admin", "admin");
     }
     private synchronized void resetRestCaller() {
         _caller = null;
@@ -187,7 +141,7 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
                             @Override
                             public Boolean call() throws Exception {
                                 try {
-                                    return (getRestCaller().getHosts()!=null); 
+                                    return (getRestCaller().getHosts()!=null);
                                 } 
                                 catch (Exception e) {
                                     log.error("Cannot execute getRestCaller().getHosts()", e); 
