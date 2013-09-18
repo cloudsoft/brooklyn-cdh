@@ -16,7 +16,7 @@
 		<groovy.version>1.8.6</groovy.version>
 		<testng.version>6.3.1</testng.version>
 		<brooklyn.version>0.6.0-SNAPSHOT</brooklyn.version>
-		<jclouds.version>1.6.0</jclouds.version>
+		<jclouds.version>1.6.2</jclouds.version>
 		<slf4j.version>1.6.6</slf4j.version>
 		<logback.version>1.0.7</logback.version>
 		<cloudera-whirr-cdh.version>0.8.0-cdh4.1.3</cloudera-whirr-cdh.version>
@@ -56,22 +56,7 @@
 		<dependency>
 			<groupId>org.apache.jclouds.provider</groupId>
 			<artifactId>softlayer</artifactId>
-			<version>1.6.2-SNAPSHOT</version>
-		</dependency>
-		<dependency>
-			<groupId>org.jclouds.labs</groupId>
-			<artifactId>google-compute-engine</artifactId>
-			<version>${jclouds.version}</version>
-			<exclusions>
-				<exclusion>
-					<groupId>org.jclouds</groupId>
-					<artifactId>jclouds-core</artifactId>
-				</exclusion>
-				<exclusion>
-					<groupId>org.jclouds</groupId>
-					<artifactId>jclouds-compute</artifactId>
-				</exclusion>
-			</exclusions>
+			<version>1.6.2-cloudsoft.1</version>
 		</dependency>
 		<dependency>
 			<groupId>io.cloudsoft.amp.locations</groupId>

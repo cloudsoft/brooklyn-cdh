@@ -6,19 +6,16 @@ import io.cloudsoft.cloudera.rest.ClouderaRestCaller;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
 import org.jclouds.compute.ComputeServiceContext;
-import org.jclouds.compute.domain.OsFamily;
 import org.jclouds.ec2.EC2AsyncClient;
 import org.jclouds.ec2.EC2Client;
 import org.jclouds.ec2.domain.IpProtocol;
 import org.jclouds.ec2.domain.Reservation;
 import org.jclouds.ec2.domain.RunningInstance;
-import org.jclouds.googlecomputeengine.GoogleComputeEngineApiMetadata;
 import org.jclouds.rest.RestContext;
 
 import brooklyn.config.render.RendererHints;
@@ -29,9 +26,7 @@ import brooklyn.event.feed.function.FunctionPollConfig;
 import brooklyn.location.Location;
 import brooklyn.location.MachineProvisioningLocation;
 import brooklyn.location.jclouds.JcloudsLocation;
-import brooklyn.location.jclouds.JcloudsLocationConfig;
 import brooklyn.location.jclouds.JcloudsSshMachineLocation;
-import brooklyn.location.jclouds.templates.PortableTemplateBuilder;
 import brooklyn.util.MutableMap;
 import brooklyn.util.MutableSet;
 import brooklyn.util.exceptions.Exceptions;
@@ -48,13 +43,6 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
     static {
         RendererHints.register(CLOUDERA_MANAGER_URL, new RendererHints.NamedActionWithUrl("Open"));
     }
-//
-//    @Override
-//    public void init() {
-//        super.init();
-//        setConfig(APT_PROXY, getManagementContext().getConfig().getFirst(APT_PROXY.getName()));
-//        setConfig(USE_IP_ADDRESS, getManagementContext().getConfig().getFirst(USE_IP_ADDRESS.getName()));
-//    }
     
     @Override
     public Class getDriverInterface() {
@@ -67,6 +55,7 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
                 build();
     }
     
+    /*
     protected Map<String, Object> getProvisioningFlags(MachineProvisioningLocation location) {
         return obtainProvisioningFlags(location);
     }
@@ -103,6 +92,7 @@ public class DirectClouderaManagerImpl extends SoftwareProcessImpl implements Di
         }
         return flags;
     }
+    */
 
     private boolean isJcloudsLocation(MachineProvisioningLocation location, String providerName) {
         return location instanceof JcloudsLocation
