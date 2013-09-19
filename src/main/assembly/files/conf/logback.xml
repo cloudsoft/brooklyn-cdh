@@ -1,10 +1,10 @@
 <configuration>
 
-  <!-- logging configuration for this project; edit this file as required! -->
+  <!-- logging configuration for this project; edit this file as required, or override the files 
+       this includes as described in the Logging section of the brooklyn users guide.
+       brooklyn-cdh already supplies a logback-custom.xml which gets included to log our
+       classes at debug level and write to brooklyn-cloudera.log -->
 
-  <include resource="io/cloudsoft/cloudera/logback-cloudera.xml"/>
+  <include resource="logback-main.xml"/>
   
-  <!-- for debug, these are recommended in addition to logback-cloudera.xml --> 
-  <include resource="io/cloudsoft/cloudera/logback-cloudera-debug.xml"/>
-
 </configuration>
