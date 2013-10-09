@@ -3,7 +3,7 @@
     
     <groupId>io.cloudsoft.cloudera</groupId>
     <artifactId>brooklyn-cdh</artifactId>
-    <version>1.2.0-SNAPSHOT</version>
+    <version>1.2.0-vcloud.1</version>
     <packaging>jar</packaging>
     
     <name>Brooklyn Cloudera Manager and Hadoop Descriptor</name>
@@ -140,6 +140,14 @@
     </repositories>
 
     <build>
+        <extensions>
+           <extension>
+               <groupId>org.apache.maven.wagon</groupId>
+               <artifactId>wagon-ssh-external</artifactId>
+               <version>2.4</version>
+           </extension>
+       </extensions>
+    
         <testSourceDirectory>src/test/java</testSourceDirectory>
         <testResources>
             <testResource>
@@ -229,8 +237,27 @@
                         <useReleaseProfile>false</useReleaseProfile>
                         <arguments>-Dbrooklyn.deployTo=sonatype</arguments>
                     </configuration>
-                </plugin>
+                </plugin> 
+                
+<plugin>
+    <groupId>org.apache.maven.plugins</groupId>
+    <artifactId>maven-deploy-plugin</artifactId>
+    <version>2.6</version>
+    <goals>
+        <goal>deploy-file</goal>
+    </goals>
+    <configuration>
+        <repositoryId>cloudsoftDevelopers</repositoryId>
+        <packaging>tar.gz</packaging>
+        <url>scpexe://maven@releng2.cloudsoftcorp.com/var/www/developer/maven/releases/</url>
+        <artifactId>${project.artifactId}</artifactId>
+        <groupId>${project.groupId}</groupId>
+        <version>${project.version}</version>
+        <file>target/${project.artifactId}-${project.version}-bin.tar.gz</file>
+    </configuration>
+</plugin>                              
         </plugins>
+        
     </build>
 
     <profiles>
@@ -356,6 +383,17 @@
                 </snapshotRepository>
             </distributionManagement>
         </profile>
+        <profile>
+            <id>cloudsoft-developers-repo</id>
+            <activation> <property><name>brooklyn.deployTo</name><value>cloudsoftDevelopers</value></property> </activation>
+            <distributionManagement>
+                <repository>
+                    <id>cloudsoft-releases</id>
+                    <name>cloudsoft-releases</name>
+                    <url>scpexe://maven@releng2.cloudsoftcorp.com/var/www/developer/maven/snapshots/</url>
+               </repository>
+            </distributionManagement>
+        </profile>        
     </profiles>
 
 </project>
