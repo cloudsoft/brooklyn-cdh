@@ -66,7 +66,7 @@ public class DirectClouderaManagerSshDriver extends AbstractSoftwareProcessSshDr
         entity.setAttribute(DirectClouderaManager.LOCAL_HOSTNAME, execHostname());
         
         // TODO move install_cm.sh resource to sub-package io/cloudsoft/cloudera under src/main/resources/
-        InputStream installCM = new ResourceUtils(this).getResourceFromUrl("install_cm.sh");
+        InputStream installCM = ResourceUtils.create(this).getResourceFromUrl("install_cm.sh");
         Preconditions.checkNotNull(installCM, "cannot find install_cm.sh script");
         
         // TODO move these routines to a utility class (also see in ClodueraCdhNodeSshDriver)
@@ -107,7 +107,7 @@ public class DirectClouderaManagerSshDriver extends AbstractSoftwareProcessSshDr
     private InputStream generatePackageManagerProxyFile(String url, String packageManagerName) {
         if (packageManagerName.equals(APT_GET)) {
             try {
-                InputStream proxy = Preconditions.checkNotNull(new ResourceUtils(this).getResourceFromUrl("02proxy"), "cannot find 02proxy");
+                InputStream proxy = Preconditions.checkNotNull(ResourceUtils.create(this).getResourceFromUrl("02proxy"), "cannot find 02proxy");
                 String template = CharStreams.toString(new InputStreamReader(proxy));
                 String aptProxy = template.replaceFirst("ip-address", url);
                 log.debug("PackageManagerProxy set up at: " + aptProxy);
@@ -117,7 +117,7 @@ public class DirectClouderaManagerSshDriver extends AbstractSoftwareProcessSshDr
             }
         } else if (packageManagerName.equals(YUM)) {
             try {
-                InputStream proxy = Preconditions.checkNotNull(new ResourceUtils(this).getResourceFromUrl("cloudera-manager.repo"), "cannot find cloudera-manager.repo");
+                InputStream proxy = Preconditions.checkNotNull(ResourceUtils.create(this).getResourceFromUrl("cloudera-manager.repo"), "cannot find cloudera-manager.repo");
                 String template = CharStreams.toString(new InputStreamReader(proxy));
                 String yumMirror = template.replaceFirst("ip-address", url);
                 log.debug("PackageManagerProxy set up at: " + yumMirror);

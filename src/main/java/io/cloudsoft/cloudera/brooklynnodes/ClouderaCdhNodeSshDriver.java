@@ -64,8 +64,8 @@ public class ClouderaCdhNodeSshDriver extends AbstractSoftwareProcessSshDriver i
         entity.setAttribute(ClouderaCdhNode.LOCAL_HOSTNAME, execHostname());
 
         // TODO move to io/cloudsoft/cloudera inside src/main/resources
-        getMachine().copyTo(new ResourceUtils(entity).getResourceFromUrl("classpath://scm_prepare_node.tgz"), "/tmp/scm_prepare_node.tgz");
-        getMachine().copyTo(new ResourceUtils(entity).getResourceFromUrl("classpath://etc_cloudera-scm-agent_config.ini"), "/tmp/etc_cloudera-scm-agent_config.ini");
+        getMachine().copyTo(ResourceUtils.create(entity).getResourceFromUrl("classpath://scm_prepare_node.tgz"), "/tmp/scm_prepare_node.tgz");
+        getMachine().copyTo(ResourceUtils.create(entity).getResourceFromUrl("classpath://etc_cloudera-scm-agent_config.ini"), "/tmp/etc_cloudera-scm-agent_config.ini");
         
         String aptProxyUrl = getLocation().getConfig(ClouderaCdhNode.APT_PROXY);
         if(Strings.isNonEmpty(aptProxyUrl)) {
@@ -89,7 +89,7 @@ public class ClouderaCdhNodeSshDriver extends AbstractSoftwareProcessSshDriver i
     }
 
     private InputStream generatePackageManagerProxyFile(String aptProxyUrl) {
-        InputStream proxy = Preconditions.checkNotNull(new ResourceUtils(this).getResourceFromUrl("02proxy"), "cannot find 02proxy");
+        InputStream proxy = Preconditions.checkNotNull(ResourceUtils.create(this).getResourceFromUrl("02proxy"), "cannot find 02proxy");
         try {
             String template = CharStreams.toString(new InputStreamReader(proxy));
             String aptProxy = template.replaceFirst("ip-address", aptProxyUrl);
