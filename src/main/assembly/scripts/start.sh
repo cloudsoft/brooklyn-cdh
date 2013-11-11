@@ -23,4 +23,4 @@ if [[ ! `ls brooklyn-cdh-*.jar 2> /dev/null` ]] ; then
   exit 1
 fi
 
-$JAVA -Xms256m -Xmx1024m -XX:MaxPermSize=1024m -Djclouds.ssh.max-retries=100 -Djclouds.so-timeout=120000 -Djclouds.connection-timeout=120000 -classpath "*:lib/*" io.cloudsoft.cloudera.SampleClouderaManagedCluster --location $1 "$@"
+$JAVA -Xms256m -Xmx1024m -XX:MaxPermSize=1024m -Djclouds.ssh.max-retries=100 -Djclouds.so-timeout=120000 -Djclouds.connection-timeout=120000 -classpath "conf/:*:lib/*" io.cloudsoft.cloudera.SampleClouderaManagedCluster --location $1 "$@"
