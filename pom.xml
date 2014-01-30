@@ -38,8 +38,7 @@
 
         <groovy.version>1.8.6</groovy.version>
         <testng.version>6.8</testng.version>
-        <brooklyn.version>0.6.0-rc.2</brooklyn.version>
-        <jclouds.version>1.6.2-incubating</jclouds.version>
+        <brooklyn.version>0.6.0-SNAPSHOT</brooklyn.version>
         <brooklyn.ibm-smartcloud.version>0.6.0-SNAPSHOT</brooklyn.ibm-smartcloud.version>
         <slf4j.version>1.6.6</slf4j.version>
         <logback.version>1.0.7</logback.version>
@@ -55,50 +54,35 @@
             <artifactId>brooklyn-all</artifactId>
             <version>${brooklyn.version}</version>
             <exclusions>
-                <exclusion>
-                    <groupId>org.apache.jclouds</groupId>
-                    <artifactId>jclouds-allcompute</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>io.brooklyn</groupId>
-                    <artifactId>brooklyn-systems-hadoop</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.apache.jclouds.driver</groupId>
-                    <artifactId>jclouds-sshj</artifactId>
-                </exclusion>
+            	<exclusion>
+            		<artifactId>softlayer</artifactId>
+            		<groupId>org.apache.jclouds.provider</groupId>
+            	</exclusion>
             </exclusions>
-        </dependency>       
-        <dependency>
-            <groupId>io.brooklyn</groupId>
-            <artifactId>brooklyn-test-support</artifactId>
-            <version>${brooklyn.version}</version>
-            <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>io.brooklyn</groupId>
-            <artifactId>brooklyn-logback-xml</artifactId>
-            <version>${brooklyn.version}</version>
-            <!-- optional so that this project has logging; dependencies may redeclare or supply their own -->
-            <optional>true</optional>
-            <scope>provided</scope>
-        </dependency>
-        
-        <dependency>
-            <groupId>org.apache.jclouds</groupId>
-            <artifactId>jclouds-allcompute</artifactId>
-            <version>${jclouds.version}</version>
+            <groupId>org.apache.jclouds.provider</groupId>
+            <artifactId>softlayer</artifactId>
+            <version>1.6.3-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.jclouds.labs</groupId>
             <artifactId>google-compute-engine</artifactId>
-            <version>${jclouds.version}</version>
-        </dependency>
+            <version>1.6.3-SNAPSHOT</version>
+        </dependency>         
         <dependency>
-            <groupId>org.apache.jclouds.driver</groupId>
-            <artifactId>jclouds-sshj</artifactId>
-            <version>${jclouds.version}</version>
-        </dependency>
+            <groupId>org.apache.jclouds.labs</groupId>
+            <artifactId>abiquo</artifactId>
+            <version>1.6.3-SNAPSHOT</version>
+        </dependency> 
+        <dependency>
+            <groupId>io.brooklyn</groupId>
+            <artifactId>brooklyn-logback-xml</artifactId>
+            <version>${brooklyn.version}</version> 
+            <scope>provided</scope>  
+            <optional>true</optional>
+        </dependency>  
+<!-- 
         <dependency>
             <groupId>io.cloudsoft.amp.locations</groupId>
             <artifactId>ibm-smartcloud</artifactId>
@@ -109,6 +93,13 @@
                     <artifactId>brooklyn-core</artifactId>
                 </exclusion>
             </exclusions>
+        </dependency>
+-->    
+        <dependency>
+            <groupId>io.brooklyn</groupId>
+            <artifactId>brooklyn-test-support</artifactId>
+            <version>${brooklyn.version}</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <!-- web testing -->
@@ -152,6 +143,16 @@
             <id>cloudera-releases</id>
             <url>https://repository.cloudera.com/content/groups/cdh-releases-rcs</url>
         </repository>
+		<repository>
+		      <id>apache-snapshots</id>
+		      <url>https://repository.apache.org/content/repositories/snapshots</url>
+		      <releases>
+		        <enabled>false</enabled>
+		      </releases>
+		      <snapshots>
+		        <enabled>true</enabled>
+		      </snapshots>
+		</repository>        
     </repositories>
 
     <build>
@@ -277,20 +278,6 @@
                             <id>attach-javadocs</id>
                             <goals>
                                 <goal>jar</goal>
-                            </goals>
-                        </execution>
-                    </executions>
-                </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-gpg-plugin</artifactId>
-                    <version>1.1</version>
-                    <executions>
-                        <execution>
-                            <id>sign-artifacts</id>
-                            <phase>verify</phase>
-                            <goals>
-                                <goal>sign</goal>
                             </goals>
                         </execution>
                     </executions>
@@ -444,6 +431,24 @@
                     <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
                 </snapshotRepository>
             </distributionManagement>
+            <build>
+            	<plugins>
+	            	<plugin>
+	                    <groupId>org.apache.maven.plugins</groupId>
+	                    <artifactId>maven-gpg-plugin</artifactId>
+	                    <version>1.1</version>
+	                    <executions>
+	                        <execution>
+	                            <id>sign-artifacts</id>
+	                            <phase>verify</phase>
+	                            <goals>
+	                                <goal>sign</goal>
+	                            </goals>
+	                        </execution>
+	                    </executions>
+	                </plugin>
+                </plugins>
+            </build>
         </profile>
     </profiles>
 
